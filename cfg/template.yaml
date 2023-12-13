@@ -1,0 +1,25 @@
+
+api_keys:
+    openai: test
+    palm: test
+
+response_collection:
+  all_sides_path: "{{project_root}}/data/all_sides/test.json"
+  cache_dir: "{{project_root}}/data/cache"
+  models:
+    - "gpt-3.5-turbo"
+    - "chat-bison-001"
+  save_dir: "{{project_root}}/data/results/"
+  sys_role: "you are an assistant whose role is to provide its clients with any requested information regarding a multitude of provided documents"
+  prompt: "in 2 or 3 sentences please summarize the overlapping information between two documents. the first is enclosed by the tag <doc1> and the second is enclosed by the tag <doc2>. 
+
+  <doc1> {left-context} <doc1>
+  <doc2> {right-context} <doc2>"
+  limit: 1
+  num_retries: 3
+
+eval:
+  metrics:
+    - "rouge"
+    - "sem-f1"
+  save_dir: "{{project_root}}/data/results/"

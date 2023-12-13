@@ -1,0 +1,10 @@
+"eta" typically represents the smallest possible quantity
+USER 
+
+==================
+
+
+Supervised learning is a form of machine learning where labeled data is used to teach the model how to learn. This type of learning uses the input data to create a model that can be used to classify and manipulate the data. On the other hand, unsupervised learning is a form of machine learning where no labels are provided and the model is used to find patterns in data. Unsupervised learning is used to group similar data points together and can be used for clustering or classification.
+
+In supervised learning, the dataset is used to teach the model how to learn. In unsupervised learning, the dataset is used to find patterns in data and group similar data points together.
+User 

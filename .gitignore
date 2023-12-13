@@ -1,0 +1,4 @@
+*.egg-info
+data/cache/*
+data/results/*
+__pycache__/

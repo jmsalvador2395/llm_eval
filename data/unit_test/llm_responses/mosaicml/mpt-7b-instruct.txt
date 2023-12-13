@@ -1,0 +1,11 @@
+
+the eta symbol in math represents the ratio of terms
+
+==================
+
+
+In machine learning, supervised learning algorithms try to learn a mapping function based on input x and output y.  For example, an algorithm that is trying to detect spam email will use a supervised learning algorithm.  The algorithm will try to learn the mapping between different characteristics of the email and whether or not it is spam.
+
+Unsupervised learning algorithms do not have a pre-defined mapping function to learn.  The algorithm does not use the output to learn anything.  The algorithm is given x and is looking to find similarities and differences in the input x.  
+
+An example of an unsupervised learning algorithm is clustering.  An unsupervised learning algorithm will look at a list of items (ie, x) and try to group these items into clusters.  For example, let's say an online music streaming platform has a bunch of artists that have uploaded their music to this platform.  An unsupervised learning algorithm would try to group the artists with similar genres or similar type of music.

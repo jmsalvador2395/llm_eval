@@ -1,0 +1,13 @@
+In mathematics, the symbol "eta" (η) is often used to represent the seventh letter of the Greek alphabet. It is commonly used as a variable or parameter representing a quantity or a parameter in various mathematical contexts, such as in calculus, linear algebra, and number theory. However, it's important to note that the specific meaning of the symbol "eta" may vary depending on the specific mathematical context in which it is used.
+
+==================
+
+Supervised learning and unsupervised learning are two different approaches in machine learning.
+
+Supervised Learning:
+Supervised learning is a type of learning algorithm where the model learns from labeled training data. In this approach, the input data is accompanied by the correct output, which serves as a guide for the model to learn from. The goal of supervised learning is to make predictions or classify new unseen instances based on the patterns learned from the labeled data. The model tries to find the relationship between the input features and the corresponding target variable. Common examples of supervised learning algorithms include linear regression, logistic regression, decision trees, and support vector machines.
+
+Unsupervised Learning:
+Unsupervised learning, on the other hand, is a type of learning algorithm where the model learns from unlabeled data. In this approach, the input data does not have any specified output or target variable. The goal of unsupervised learning is to discover patterns or structures in the data. It allows the model to learn on its own without any specific guidance. Unsupervised learning algorithms are used for tasks like clustering, dimensionality reduction, and anomaly detection. Popular unsupervised learning algorithms include k-means clustering, hierarchical clustering, and principal component analysis (PCA).
+
+In summary, supervised learning uses labeled data to learn patterns and make predictions while unsupervised learning works with unlabeled data to find underlying structures or patterns.
