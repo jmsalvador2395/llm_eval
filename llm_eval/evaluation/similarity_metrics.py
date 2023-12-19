@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
 from typing import List
+import gc
 
 
 def compute_cosine_similarity(pred_embeds, ref_embeds):
@@ -30,6 +31,9 @@ def use_similarity(predictions: List[List[str]], references: List[List[str]]):
         ref_embeddings = model(refs)
         out_scores[idx] = compute_cosine_similarity(pred_embeddings, ref_embeddings)
 
+    del model
+    gc.collect()
+
     return out_scores
 
 
@@ -52,5 +56,8 @@ def sbert_similarity(predictions: List[List[str]], references: List[List[str]], 
         pred_embeddings = model.encode(preds)
         ref_embeddings = model.encode(refs)
         out_scores[idx] = compute_cosine_similarity(pred_embeddings, ref_embeddings)
+
+    del model
+    gc.collect()
 
     return out_scores

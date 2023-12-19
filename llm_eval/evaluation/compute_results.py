@@ -1,5 +1,4 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 # external dependencies
 from typing import List, Dict
@@ -8,7 +7,7 @@ import torch
 import evaluate
 import os
 import numpy as np
-import tensorflow as tf
+#import tensorflow as tf
 from datasets import Dataset
 from nltk import sent_tokenize
 from itertools import product
@@ -17,29 +16,25 @@ from tqdm import tqdm
 import time
 
 # local dependencies
-from .similarity_metrics import (
-    use_similarity,
-    sbert_similarity,
-)
-
 from llm_eval.utils import (
     files,
     strings,
+)
+from .similarity_metrics import (
+    use_similarity,
+    sbert_similarity,
 )
 
 def replace_nones(responses: List[str]):
     out = [el if el is not None else '' for el in responses]
     return out
 
-def compute_rouge(ds):
+def compute_rouge(ds: Dataset, 
+                  ref_cols: List[str]):
+
     rouge_preds = ds['response']
 
-    rouge_refs = list(zip(
-        ds['Ahmed_Intersection'],
-        ds['Naman_Intersection'],
-        ds['Helen_Intersection'],
-        ds['AllSides_Intersection'],
-    ))
+    rouge_refs = list(zip(*[ds[rc] for rc in ref_cols]))
     rouge_scorer = evaluate.load('rouge')
 
     rouge_preds = [doc if doc is not None else '' for doc in rouge_preds]
@@ -50,16 +45,22 @@ def compute_rouge(ds):
     )
     return rouge_metrics
 
-def compute_bertscore(ds: Dataset, rescale_with_baseline: bool=True):
+def compute_bertscore(ds: Dataset,
+                      ref_cols: List[str], 
+                      rescale_with_baseline: bool=True):
+
     # set preds and refs
     bertscore_preds = ds['response']
     bertscore_preds = replace_nones(bertscore_preds)
+    bertscore_refs = {rc: ds[rc] for rc in ref_cols}
+    """
     bertscore_refs = {
         'Ahmed': ds['Ahmed_Intersection'],
         'Naman': ds['Naman_Intersection'],
         'Helen': ds['Helen_Intersection'],
         'AllSides': ds['AllSides_Intersection'],
     }
+    """
 
     # load metric
     bertscore = evaluate.load("bertscore")
@@ -68,6 +69,7 @@ def compute_bertscore(ds: Dataset, rescale_with_baseline: bool=True):
     bertscore_metrics = {}
 
     # evaluation loop
+    """
     metric1 = bertscore.compute(
         predictions=bertscore_preds, 
         references=bertscore_refs['Ahmed'], 
@@ -89,7 +91,23 @@ def compute_bertscore(ds: Dataset, rescale_with_baseline: bool=True):
         references=bertscore_refs['AllSides'], 
         lang="en"
     )
-    metrics_stacked = np.vstack([metric1['f1'], metric2['f1'], metric3['f1'], metric4['f1']])
+    """
+    scores = []
+    for rc in ref_cols:
+        try:
+            scores.append(
+                bertscore.compute(
+                    predictions=bertscore_preds, 
+                    references=bertscore_refs[rc], 
+                    lang="en",
+                    rescale_with_baseline=rescale_with_baseline,
+                )
+            )
+        except Exception as e:
+            display.error('failed to compute bertscore at ')
+            print(e)
+    #metrics_stacked = np.vstack([metric1['f1'], metric2['f1'], metric3['f1'], metric4['f1']])
+    metrics_stacked = np.vstack([score['f1'] for score in scores])
     metrics_maxed = np.max(metrics_stacked, axis=0)
     metrics_ag = np.mean(metrics_maxed)
     
@@ -98,34 +116,26 @@ def compute_bertscore(ds: Dataset, rescale_with_baseline: bool=True):
     return bertscore_metrics
 
 
-def compute_semf1(ds):
+def compute_semf1(ds: Dataset,
+                  ref_cols: List[str]):
 
     semf1_preds = ds['response']
 
-    semf1_refs = {
-        'Ahmed_Intersection': ds['Ahmed_Intersection'],
-        'Naman_Intersection': ds['Naman_Intersection'],
-        'Helen_Intersection': ds['Helen_Intersection'],
-        'AllSides_Intersection': ds['AllSides_Intersection'],
-    }
-    semf1_refs_ag = list(zip(
-        ds['Ahmed_Intersection'],
-        ds['Naman_Intersection'],
-        ds['Helen_Intersection'],
-        ds['AllSides_Intersection'],
-    ))
+    # make dictionary of references. each key represents 1 column of references
+    semf1_refs = {rc: ds[rc] for rc in ref_cols} # rc = ref_col
+
+    # aggregate the references so that iterating provides one set of references for one sample
+    semf1_refs_ag = list(zip(*[ds[rc] for rc in ref_cols]))
 
     semf1_refs_ag = ['\n'.join(grp) for grp in semf1_refs_ag]
     semf1_recall_preds = []
-    for grp in zip(ds['Ahmed_Intersection'],
-                   ds['Naman_Intersection'],
-                   ds['Helen_Intersection'],
-                   ds['AllSides_Intersection']):
+
+    for grp in zip(*[ds[rc] for rc in ref_cols]):
         semf1_recall_preds.extend(list(grp))
 
     semf1_recall_refs  = []
     for ref in ds['response']:
-        semf1_recall_refs.extend([ref]*4)
+        semf1_recall_refs.extend([ref]*len(ref_cols))
 
     semf1_preds = [sent_tokenize(doc) if doc is not None else [''] for doc in semf1_preds]
     for key in semf1_refs.keys():
@@ -138,12 +148,12 @@ def compute_semf1(ds):
     semf1_metrics = {}
 
     # compute metrics
+    p_rob = sbert_similarity(semf1_preds, semf1_refs_ag, 'stsb-roberta-large')
+    r_rob = sbert_similarity(semf1_recall_preds, semf1_recall_refs, 'stsb-roberta-large')
     p_use = use_similarity(semf1_preds, semf1_refs_ag)
     r_use = use_similarity(semf1_recall_preds, semf1_recall_refs)
     p_distil = sbert_similarity(semf1_preds, semf1_refs_ag, 'paraphrase-distilroberta-base-v1')
     r_distil = sbert_similarity(semf1_recall_preds, semf1_recall_refs, 'paraphrase-distilroberta-base-v1')
-    p_rob = sbert_similarity(semf1_preds, semf1_refs_ag, 'stsb-roberta-large')
-    r_rob = sbert_similarity(semf1_recall_preds, semf1_recall_refs, 'stsb-roberta-large')
 
     # compute averages for each sample
     p_use = np.array([np.mean(sample) for sample in p_use])
@@ -177,7 +187,6 @@ def compute_semf1(ds):
 
 def collect_scores(args, cfg, keywords):
 
-    breakpoint()
     if args.procedure == 'unit_test':
         base_path = f'{files.project_root()}/data/unit_test/eval/'
     elif args.procedure == 'exec_all':
@@ -185,15 +194,20 @@ def collect_scores(args, cfg, keywords):
     elif args.procedure == 'evaluate':
         base_path = f'{cfg.response_collection["save_dir"]}/{args.timestamp}'
 
+    # get file names in target path
     targets = []
-    for path, subdirs, files in os.walk(base_path):
-        for name in files:
-            targets.append(os.path.join(path, name))
+    for path, subdirs, fnames in os.walk(base_path):
+        for name in fnames:
+            if name.endswith('.json'):
+                targets.append(os.path.join(path, name))
 
     out_table = '| Model | Sem-F1 (USE) | Sem-F1 (Distil) | Sem-F1 (RoBERTa) | Rouge-1 | ' \
                 + 'Rouge-2 | Rouge-L | Rouge-L Sum | BERTscore |\n' \
                 + '| - | - | - | - | - | - | - | - | - |\n'
             
+    # get set of dataset names
+    ds_names = set(cfg.response_collection['datasets'].keys())
+
     scores = {}
     start = time.time()
     for trgt in tqdm(targets, total=len(targets)):
@@ -201,6 +215,10 @@ def collect_scores(args, cfg, keywords):
         
         print(f'***** computing metrics for {trgt[len(base_path):]} *****')
         ds = Dataset.from_json(trgt)
+
+        # get dataset name for given target
+        trgt_split = set(trgt.replace(base_path, '').split('/'))
+        trgt_ds = trgt_split.intersection(ds_names).pop()
 
         # remove empty samples
         before_prune = len(ds)
@@ -210,9 +228,10 @@ def collect_scores(args, cfg, keywords):
 
         print(f'size before filter: {before_prune}\nsize after filter: {after_prune}')
 
-        rouge_scores = compute_rouge(ds)
-        bert_score = compute_bertscore(ds)
-        semf1 = compute_semf1(ds)
+        ref_cols = cfg.response_collection['datasets'][trgt_ds]['ref_col_names']
+        bert_score = compute_bertscore(ds, ref_cols)
+        rouge_scores = compute_rouge(ds, ref_cols)
+        semf1 = compute_semf1(ds, ref_cols)
 
         scores[trgt[:len(base_path)]] = {
             'rouge': rouge_scores,
@@ -229,8 +248,8 @@ def collect_scores(args, cfg, keywords):
 
         end = time.time()
         print('=================')
-        print(f'Time to Finish Sample: {end-sample_start:.02f}'
-            + f'Total Elapsed Time: {end-start:.02f}')
+        print(f'Time to Finish Sample: {end-sample_start:.02f} seconds\n'
+            + f'Total Elapsed Time: {(end-start)/60:.02f} minutes')
         print('=================')
 
 if __name__ == '__main__':

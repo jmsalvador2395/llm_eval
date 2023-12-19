@@ -57,16 +57,14 @@ def run(args, cfg, keywords):
     teler = TELeR(cfg)
     start_time = time.time()
     for ds_name in ds_dict.keys():
-        display.info(f'generating data for dataset "{ds_name}"')
         if limit is None:
             limit = len(ds_dict[ds_name])
 
         for model_name in cfg.response_collection.get('models', ['gpt-3.5-turbo']):
-            display.info(f'generating data for model "{model_name}"')
             session = select_chat_model(cfg, model_name)
 
             for lv in teler.get_levels(ds_name):
-                display.info(f'generating data for level {lv}')
+                display.info(f'generating: dataset - {ds_name}, model - {model_name}, level - {lv} prompt')
 
                 out_ds = ds_dict[ds_name].select(range(limit))
                 out_ds = teler.format_data(out_ds, ds_name, lv)
@@ -85,7 +83,7 @@ def run(args, cfg, keywords):
                 ckpt_time = time.time()
                 elapsed = ckpt_time-start_time
                 display.info(
-                    f'Elapsed Time: {elapsed:.02f} seconds ({elapsed/60:.02f} minutes or {elapsed/3600:.02f} hours'
+                    f'Elapsed Time: {elapsed:.02f} seconds ({elapsed/60:.02f} minutes or {elapsed/3600:.02f} hours)'
                 )
 
             del session

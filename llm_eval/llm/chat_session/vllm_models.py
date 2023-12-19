@@ -67,7 +67,9 @@ class VLlmSession(ChatSession):
             model_name,
             trust_remote_code=True,
             download_dir=model_cache,
-            dtype='auto',
+            #gpu_memory_utilization=1,
+            #dtype='auto',
+            dtype=torch.float16,
             tensor_parallel_size=tensor_parallel_size,
             seed=int(time.time())
         )
