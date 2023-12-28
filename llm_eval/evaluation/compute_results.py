@@ -53,14 +53,6 @@ def compute_bertscore(ds: Dataset,
     bertscore_preds = ds['response']
     bertscore_preds = replace_nones(bertscore_preds)
     bertscore_refs = {rc: ds[rc] for rc in ref_cols}
-    """
-    bertscore_refs = {
-        'Ahmed': ds['Ahmed_Intersection'],
-        'Naman': ds['Naman_Intersection'],
-        'Helen': ds['Helen_Intersection'],
-        'AllSides': ds['AllSides_Intersection'],
-    }
-    """
 
     # load metric
     bertscore = evaluate.load("bertscore")
@@ -69,29 +61,6 @@ def compute_bertscore(ds: Dataset,
     bertscore_metrics = {}
 
     # evaluation loop
-    """
-    metric1 = bertscore.compute(
-        predictions=bertscore_preds, 
-        references=bertscore_refs['Ahmed'], 
-        lang="en",
-        rescale_with_baseline=rescale_with_baseline,
-    )
-    metric2 = bertscore.compute(
-        predictions=bertscore_preds, 
-        references=bertscore_refs['Naman'], 
-        lang="en"
-    )
-    metric3 = bertscore.compute(
-        predictions=bertscore_preds, 
-        references=bertscore_refs['Helen'], 
-        lang="en"
-    )
-    metric4 = bertscore.compute(
-        predictions=bertscore_preds, 
-        references=bertscore_refs['AllSides'], 
-        lang="en"
-    )
-    """
     scores = []
     for rc in ref_cols:
         try:

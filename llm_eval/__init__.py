@@ -24,12 +24,11 @@ def main():
     args = arguments.parse()
     cfg, keywords = cfg_reader.load(args.cfg)
 
-    if args.procedure == 'exec_all':
-        response_collector.run(args, cfg, keywords)
-        evaluator.evaluate(args, cfg, keywords)
-
     # choose execute the desired procedure
     match args.procedure:
+        case 'exec_all':
+            response_collector.run(args, cfg, keywords)
+            evaluator.evaluate(args, cfg, keywords)
         case 'response_collection':
             response_collector.run(args, cfg, keywords)
         case 'evaluate':

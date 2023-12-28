@@ -27,6 +27,7 @@ def get_instruct_models() -> list:
         'Salesforce/codegen25-7b-instruct',
         'Salesforce/instructcodet5p-16b',
         'mistralai/Mistral-7B-Instruct-v0.1',
+        "mistralai/Mistral-7B-Instruct-v0.2"
         'lmsys/vicuna-7b-v1.5',
         'lmsys/vicuna-7b-v1.5-16k',
         'lmsys/vicuna-13b-v1.5',
@@ -77,6 +78,8 @@ def get_vllm_models() -> list:
     return sorted([
         'mistralai/Mistral-7B-v0.1',
         'mistralai/Mistral-7B-Instruct-v0.1',
+        "mistralai/Mistral-7B-Instruct-v0.2",
+        "mistralai/Mixtral-8x7B-Instruct-v0.1",
         'Phind/Phind-CodeLlama-34B-v2',
         'codellama/CodeLlama-7b-Instruct-hf',
         'codellama/CodeLlama-13b-Instruct-hf',

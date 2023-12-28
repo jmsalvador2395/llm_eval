@@ -5,20 +5,22 @@ api_keys:
 
 response_collection:
   ds_cache: "{{project_root}}/data/cache"
-  prompt_template: "{{project_root}}/cfg/prompts.yaml"
+  #prompt_template: "{{project_root}}/cfg/prompts/prompts01.yaml"
+  prompt_template: "{{project_root}}/cfg/prompts/prompts02.yaml"
   models:
-    #- "mistralai/Mistral-7B-Instruct-v0.1"
-    #- "lmsys/vicuna-7b-v1.5"
-    #- "lmsys/vicuna-7b-v1.5-16k"
-    #- "lmsys/vicuna-13b-v1.5"
-    #- "lmsys/vicuna-13b-v1.5-16k"
-    #- "mosaicml/mpt-7b-instruct"
-    #- "mosaicml/mpt-7b-chat"
-    #- "meta-llama/Llama-2-7b-chat-hf"
-    #- "meta-llama/Llama-2-13b-chat-hf"
-    - "gpt-3.5-turbo"
+    - "mistralai/Mistral-7B-Instruct-v0.2"
+    - "tiiuae/falcon-7b-instruct"
+    - "lmsys/vicuna-7b-v1.5"
+    - "lmsys/vicuna-7b-v1.5-16k"
+    - "lmsys/vicuna-13b-v1.5"
+    - "lmsys/vicuna-13b-v1.5-16k"
+    - "mosaicml/mpt-7b-instruct"
+    - "mosaicml/mpt-7b-chat"
+    - "meta-llama/Llama-2-7b-chat-hf"
+    - "meta-llama/Llama-2-13b-chat-hf"
+    #- "gpt-3.5-turbo"
     #- "chat-bison-001"
-    #- "tiiuae/falcon-7b-instruct"
+    #- "mistralai/Mistral-7B-Instruct-v0.1"
     #- "meta-llama/Llama-2-70b-chat-hf"
   datasets:
     all_sides: 
@@ -52,8 +54,8 @@ eval:
   save_dir: "{{project_root}}/data/results/"
 
 model_params:
-  #model_cache: "/data/shared/llm_cache"
-  model_cache: "/data/john/cache"
+  model_cache: "/data/shared/llm_cache"
+  #model_cache: "/data/john/cache"
   use_sampling_params: False
   max_length: 2048
   num_output_tokens: 512

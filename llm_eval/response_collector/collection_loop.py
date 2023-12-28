@@ -10,6 +10,7 @@ import traceback
 import datasets
 import time
 from datasets import Dataset
+from vllm.model_executor.parallel_utils.parallel_state import destroy_model_parallel
 
 # local imports
 from llm_eval.utils import (
@@ -86,9 +87,11 @@ def run(args, cfg, keywords):
                     f'Elapsed Time: {elapsed:.02f} seconds ({elapsed/60:.02f} minutes or {elapsed/3600:.02f} hours)'
                 )
 
+            # session cleanup
             del session
             ray.shutdown()
             gc.collect()
             torch.cuda.empty_cache()
+            destroy_model_parallel()
 
     display.ok('Finished generating responses')

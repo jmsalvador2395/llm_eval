@@ -50,11 +50,6 @@ class VLlmSession(ChatSession):
             'prompt_tokens': 0,
             'total_tokens': 0,
         }
-        #model = "codellama/CodeLlama-13b-hf"
-
-        # import here because i can't see a better way to set the cache directory
-        #os.environ['TRANSFORMERS_CACHE'] = config['model_cache']
-
 
         self.sampling_params = SamplingParams(
             temperature=self.temperature,
@@ -68,8 +63,8 @@ class VLlmSession(ChatSession):
             trust_remote_code=True,
             download_dir=model_cache,
             #gpu_memory_utilization=1,
-            #dtype='auto',
-            dtype=torch.float16,
+            dtype='auto',
+            #dtype=torch.float16,
             tensor_parallel_size=tensor_parallel_size,
             seed=int(time.time())
         )

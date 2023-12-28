@@ -1,0 +1,130 @@
+all_sides:
+  0: 
+    message: "{{Left}} {{Right}}"
+  1:
+    system: "you are to read several documents and briefly provide information according to the user's needs"
+    message: |
+      Document 1:
+      {{Left}}
+
+
+      Document 2:
+      {{Right}}
+
+
+      In one sentence, please tell me the overlapping information between Document 1 and Document 2
+  2:
+    system: "you are to read several documents and provide concise answers to the user"
+    message: |
+      Document 1:
+      {{Left}}
+
+
+      Document 2:
+      {{Right}}
+
+      who or what are the common subjects of the two documents? what events are common between the documents? do the documents mention any locations that are the same between the two? Please keep your response to 2 sentences at max.
+      
+  3:
+    system: "you are to read several documents and provide concise answers to the user"
+    message: |
+      Document 1:
+      {{Left}}
+
+
+      Document 2:
+      {{Right}}
+
+
+      Consider the following questions and respond in a single sentence:
+      - who or what are the common subjects of the two documents
+      - what events are common between the documents
+      - do the documents mention any locations that are the same between the two
+  4:
+    system: "you are to read several documents and provide concise answers to the user"
+    message: |
+      Document 1:
+      {{Left}}
+
+
+      Document 2:
+      {{Right}}
+
+    
+      your goal is to describe all the common information between the given documents. to accomplish this you will need to answer the following:
+      - who or what are the common subjects of the two documents
+      - what events are common between the documents
+      - do the documents mention any locations that are the same between the two
+
+      your response will be evaluated according to how similar it is to a "reference summary".
+      Example:
+      Question: what is common between the sentence "the dog is slow" and "the dog is fast"
+      Reference Summary: Both sentences talk about the speed of a dog
+
+privacy_policy:
+  0: 
+    message: "{{Company_1}} {{Company_2}}"
+  1:
+    system: "you are to read two privacy policies and provide concise answers to the user"
+    message: |
+      Policy 1:
+      {{Company_1}}
+
+
+      Policy 2:
+      {{Company_2}}
+
+
+      In one sentence, please tell me the overlapping information between policy 1 and policy 2
+  2:
+    system: "you are to read two privacy policies and provide concise answers to the user"
+    message: |
+      Policy 1:
+      {{Company_1}}
+
+
+      Policy 2:
+      {{Company_2}}
+
+      
+      These policies are categorized under "{{Category}}". Describe the common aspects of these two policies in terms of this category. make sure to include the shared entities, actions and scope of the documents. Do not make any mention of information that is not shared between them. Keep your response to 3 sentences at most
+      
+  3:
+    system: "you are to read two privacy policies and provide concise answers to the user"
+    message: |
+      Policy 1:
+      {{Company_1}}
+
+
+      Policy 2:
+      {{Company_2}}
+
+
+      These policies are categorized under "{{Category}}". With this in mind, please answer the following:
+      - Describe the common aspects of these two policies in terms of this category.
+      - make sure to include the shared entities, actions and scope of the documents.
+      - Do not make any mention of information that is not shared between them.
+      - Do not respond in a list format and instead respond normally.
+      - Keep your response to 3 sentences at most
+  4:
+    system: "you are to read two privacy policies and provide concise answers to the user"
+    message: |
+      Policy 1:
+      {{Company_1}}
+
+
+      Policy 2:
+      {{Company_2}}
+
+    
+      your goal is to describe all the common information between the given privacy policies. to accomplish this you will need to answer according to the following:
+      - Describe the common aspects of these two policies in terms of this category.
+      - make sure to include the shared entities, actions and scope of the documents.
+      - Do not make any mention of information that is not shared between them.
+      - Do not respond in a list format and instead respond normally.
+      - Keep your response to 3 sentences at most
+
+      your response will be evaluated according to how similar it is to a "reference summary".
+      For example, an output of "cat" could be compared to "light" to get a score of 0 but that same output could be compared to "cat" to receive a score of 100. These reference summaries are usually quite short so it is important to keep your response to 3 sentences or less.
+
+

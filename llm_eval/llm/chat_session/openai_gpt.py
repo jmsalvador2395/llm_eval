@@ -55,7 +55,11 @@ class OpenAISession(ChatSession):
                     messages=msg,
                 )
                 responses.append(response.choices[0].message.content)
-            except:
+            except KeyboardInterrupt as e:
+                print(e)
+                import sys
+                sys.exit()
+            except Exception as e:
                 responses.append(None)
         if return_str:
             return responses[0]
