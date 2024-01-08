@@ -38,7 +38,8 @@ class VLlmSession(ChatSession):
             'tiiuae/falcon-7b-instruct',
             'tiiuae/falcon-40b-instruct',
         ]
-        tensor_parallel_size=torch.cuda.device_count()
+
+        tensor_parallel_size = config.model_params['num_devices']
         if self.model_name in single_gpu_models and tensor_parallel_size > 1:
             tensor_parallel_size=1
         elif self.model_name in two_gpu_models and tensor_parallel_size > 2:
@@ -58,13 +59,17 @@ class VLlmSession(ChatSession):
             max_tokens=self.num_output_tokens,
         )
 
+        if config.model_params['dtype'] == 'float16':
+            dtype = torch.float16
+        elif config.model_params['dtype'] == 'auto':
+            dtype = 'auto'
+
         self.model = LLM(
             model_name,
             trust_remote_code=True,
             download_dir=model_cache,
             #gpu_memory_utilization=1,
-            dtype='auto',
-            #dtype=torch.float16,
+            dtype=dtype,
             tensor_parallel_size=tensor_parallel_size,
             seed=int(time.time())
         )
