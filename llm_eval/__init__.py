@@ -28,7 +28,7 @@ def main():
     match args.procedure:
         case 'exec_all':
             response_collector.run(args, cfg, keywords)
-            evaluator.evaluate(args, cfg, keywords)
+            evaluation.collect_scores(args, cfg, keywords)
         case 'response_collection':
             response_collector.run(args, cfg, keywords)
         case 'evaluate':

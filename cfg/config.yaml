@@ -6,10 +6,11 @@ api_keys:
 response_collection:
   ds_cache: "{{project_root}}/data/cache"
   #prompt_template: "{{project_root}}/cfg/prompts/prompts01.yaml"
-  prompt_template: "{{project_root}}/cfg/prompts/prompts02.yaml"
+  #prompt_template: "{{project_root}}/cfg/prompts/prompts02.yaml"
+  prompt_template: "{{project_root}}/cfg/prompts/prompts03.yaml"
   models:
+    - "mistralai/Mistral-7B-Instruct-v0.1"
     - "mistralai/Mistral-7B-Instruct-v0.2"
-    - "tiiuae/falcon-7b-instruct"
     - "lmsys/vicuna-7b-v1.5"
     - "lmsys/vicuna-7b-v1.5-16k"
     - "lmsys/vicuna-13b-v1.5"
@@ -18,6 +19,7 @@ response_collection:
     - "mosaicml/mpt-7b-chat"
     - "meta-llama/Llama-2-7b-chat-hf"
     - "meta-llama/Llama-2-13b-chat-hf"
+    #- "tiiuae/falcon-7b-instruct"
     #- "gpt-3.5-turbo"
     #- "chat-bison-001"
     #- "mistralai/Mistral-7B-Instruct-v0.1"

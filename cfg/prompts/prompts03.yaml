@@ -1,0 +1,128 @@
+all_sides:
+  0: 
+    message: "{{Left}} {{Right}}"
+  1:
+    system: "you will read two documents and give brief answers to user questions"
+    message: |
+      Document 1:
+      {{Left}}
+
+
+      Document 2:
+      {{Right}}
+
+
+      In one sentence, please tell me the overlapping information between Document 1 and Document 2
+  2:
+    system: "you will read two documents and give brief answers to user questions"
+    message: |
+      Document 1:
+      {{Left}}
+
+
+      Document 2:
+      {{Right}}
+
+      who or what are the common subjects of the two documents? what events are common between the documents? do the documents mention any locations that are the same between the two? give your response in a single sentence.
+      
+  3:
+    system: "you will read two documents and give brief answers to user questions"
+    message: |
+      Document 1:
+      {{Left}}
+
+
+      Document 2:
+      {{Right}}
+
+
+      Consider the following questions use a single sentence for your response:
+      - who or what are the common subjects of the two documents
+      - what events are common between the documents
+      - do the documents mention any locations that are the same between the two
+  4:
+    system: "you will read two documents and give brief answers to user questions"
+    message: |
+      Document 1:
+      {{Left}}
+
+
+      Document 2:
+      {{Right}}
+
+    
+      your goal is to describe all the common information between the given documents in one sentence. your single-sentence response will need to answer the following:
+      - who or what are the common subjects of the two documents
+      - what events are common between the documents
+      - do the documents mention any locations that are the same between the two
+
+      your response will be evaluated according to how similar it is to a "reference summary".
+      Example:
+      Question: what is common between the sentence "the dog is slow" and "the dog is fast"
+      Reference Summary: Both sentences talk about the speed of a dog
+
+privacy_policy:
+  0: 
+    message: "{{Company_1}} {{Company_2}}"
+  1:
+    system: "you will read two documents and give brief answers to user questions"
+    message: |
+      Policy 1:
+      {{Company_1}}
+
+
+      Policy 2:
+      {{Company_2}}
+
+
+      In one sentence, please tell me the overlapping information between policy 1 and policy 2
+  2:
+    system: "you will read two documents and give brief answers to user questions"
+    message: |
+      Policy 1:
+      {{Company_1}}
+
+
+      Policy 2:
+      {{Company_2}}
+
+      
+      These policies are categorized under "{{Category}}". Describe the common aspects of these two policies in terms of this category. make sure to include the shared entities, actions and scope of the documents. Do not make any mention of information that is not shared between them. give your response in a single sentence.
+      
+  3:
+    system: "you will read two documents and give brief answers to user questions"
+    message: |
+      Policy 1:
+      {{Company_1}}
+
+
+      Policy 2:
+      {{Company_2}}
+
+
+      These policies are labelled under the "{{Category}}" category. With this in mind, use a single sentence that answers the following:
+      - Describe the common aspects of these two policies in terms of this category.
+      - make sure to include the shared entities, actions and scope of the documents.
+      - Do not make any mention of information that is not shared between them.
+      - Do not respond in a list format and instead respond normally.
+  4:
+    system: "you will read two documents and give brief answers to user questions"
+    message: |
+      Policy 1:
+      {{Company_1}}
+
+
+      Policy 2:
+      {{Company_2}}
+
+    
+      your goal is to describe all the common information between the given documents in one sentence. your single-sentence response will need to answer the following:
+      - Describe the common aspects of these two policies in terms of this category.
+      - make sure to include the shared entities, actions and scope of the documents.
+      - Do not make any mention of information that is not shared between them.
+      - Do not respond in a list format and instead respond normally.
+
+      your response will be evaluated according to how similar it is to a "reference summary".
+      For example, an output of "cat" could be compared to "light" to get a score of 0 but that same output could be compared to "cat" to receive a score of 100. These reference summaries are usually quite short so it is important to keep your response to 3 sentences or less.
+
+

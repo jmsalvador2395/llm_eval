@@ -157,7 +157,7 @@ def compute_semf1(ds: Dataset,
 def collect_scores(args, cfg, keywords):
 
     if args.procedure == 'unit_test':
-        base_path = f'{files.project_root()}/data/unit_test/eval/'
+        base_path = f'{files.project_root()}/data/unit_test/eval'
     elif args.procedure == 'exec_all':
         base_path = f'{cfg.response_collection["save_dir"]}/{keywords["timestamp"]}'
     elif args.procedure == 'evaluate':
@@ -194,9 +194,9 @@ def collect_scores(args, cfg, keywords):
         ds = ds.filter(lambda x: x['response'] != '')
         ds = ds.filter(lambda x: x['response'] is not None)
         after_prune = len(ds)
-
         print(f'size before filter: {before_prune}\nsize after filter: {after_prune}')
 
+        # compute metrics
         ref_cols = cfg.response_collection['datasets'][trgt_ds]['ref_col_names']
         bert_score = compute_bertscore(ds, ref_cols)
         rouge_scores = compute_rouge(ds, ref_cols)
@@ -212,7 +212,7 @@ def collect_scores(args, cfg, keywords):
                    + f'| {semf1["f_rob"]:.02f} | {rouge_scores["rouge1"]:.02f} | {rouge_scores["rouge2"]:.02f} ' \
                    + f'| {rouge_scores["rougeL"]:.02f} | {rouge_scores["rougeLsum"]:.02f} | {bert_score:.02f} |\n'
 
-        with open('./results_table.md', 'w') as f:
+        with open(f'{base_path}/results_table.md', 'w') as f:
             f.write(out_table)
 
         end = time.time()

@@ -30,7 +30,7 @@ def parse():
         dest='procedure',
     )
 
-    # add subparser for training procedure
+    # add subparser for full execution of script
     parser_ea = subparser.add_parser('exec_all')
     parser_ea.add_argument(
         '-c',
@@ -45,6 +45,13 @@ def parse():
         help='sets the program to debug mode. moves outputs to special locations',
         action='store_true',
         default=False,
+    )
+    parser_ea.add_argument(
+        '-l',
+        '--limit',
+        help='sets the number of samples to work on',
+        default=None,
+        type=int,
     )
 
     # add subparser for training procedure
