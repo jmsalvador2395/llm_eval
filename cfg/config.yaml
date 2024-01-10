@@ -5,9 +5,7 @@ api_keys:
 
 response_collection:
   ds_cache: "{{project_root}}/data/cache"
-  #prompt_template: "{{project_root}}/cfg/prompts/prompts01.yaml"
-  #prompt_template: "{{project_root}}/cfg/prompts/prompts02.yaml"
-  prompt_template: "{{project_root}}/cfg/prompts/prompts03.yaml"
+  prompt_template: "{{project_root}}/cfg/prompts/prompts01.yaml"
   models:
     - "mistralai/Mistral-7B-Instruct-v0.1"
     - "mistralai/Mistral-7B-Instruct-v0.2"

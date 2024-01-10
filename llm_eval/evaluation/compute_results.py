@@ -169,6 +169,7 @@ def collect_scores(args, cfg, keywords):
         for name in fnames:
             if name.endswith('.json'):
                 targets.append(os.path.join(path, name))
+    targets = sorted(targets)
 
     out_table = '| Model | Sem-F1 (USE) | Sem-F1 (Distil) | Sem-F1 (RoBERTa) | Rouge-1 | ' \
                 + 'Rouge-2 | Rouge-L | Rouge-L Sum | BERTscore |\n' \
@@ -191,8 +192,8 @@ def collect_scores(args, cfg, keywords):
 
         # remove empty samples
         before_prune = len(ds)
-        ds = ds.filter(lambda x: x['response'] != '')
         ds = ds.filter(lambda x: x['response'] is not None)
+        ds = ds.filter(lambda x: x['response'].strip() != '')
         after_prune = len(ds)
         print(f'size before filter: {before_prune}\nsize after filter: {after_prune}')
 
