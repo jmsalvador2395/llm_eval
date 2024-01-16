@@ -128,7 +128,7 @@ def collect_scores(args, cfg, keywords):
         if 'fans' in metrics:
             display.info('implement fans metric')
             # TODO compute fans score here
-            fans_score = 0
+            fans_score = compute_fans(ds, ref_cols)
             trgt_data.update({
                 'fans': fans_score,
             })
@@ -294,3 +294,46 @@ def compute_semf1(ds: Dataset,
     }
 
     return semf1_metrics
+
+def compute_fans(ds: Dataset,
+                  ref_cols: List[str]):
+
+    prompt = f"""
+        I want you to act as a native English linguistic expert. Your task
+        is to help structure a long narrative based on 5W1H, given inside
+        curly brackets {{like this}}. Give the output in json format like
+        this {{who: when: where: what: why: how:}}
+
+        Perform the following actions to analyze the narrative.
+
+        Step 1 - Find out “Who” in the narrative. You can ask the questions
+        delimited by triple backticks to analyze ```Who is speaking in the
+        narrative? Who is involved in the situation? Who is the subject of concern? ```
+
+        Step 2 - Find out “When” in the narrative. You can ask the questions
+        delimited by triple backticks to analyze ``` When did the events take
+        place? When did these concerns arise?  When did this discussion happen?```
+
+        Step 3 - Find out “Where” in the narrative. You can ask the questions
+        delimited by triple backticks to analyze ``` Where did this happen? Where
+        did the events take place? Where did the discussion take place? ```
+
+        Step 4 - Find out “What” in the narrative. You can ask the questions
+        delimited by triple backticks to analyze ```What happened? What is the
+        reason of the concern? What is the significance of this action? What is
+        the focus of the discussion? ``` Use at most 20 words for "what" response.
+
+        Step 5 - Find out “Why” in the narrative. You can ask the questions
+        delimited by triple backticks to analyze ``` Why did this take palce?
+        Why did the actors of the event raise these concerns? Why did these events
+        happen? Why is the discussion taking place?```.Use at most 20 words for "Why" response.
+
+        Step 6 - Find out “How” in the narrative. You can ask the questions
+        delimited by triple backticks to analyze ```How did the event happen?
+        How did these events transpire? How is the actors of the involved in
+        the  situation?```. Use at most 20 words for "How" response.
+
+        Narrative is 
+        """
+
+
