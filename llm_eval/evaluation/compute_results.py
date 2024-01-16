@@ -19,11 +19,152 @@ import time
 from llm_eval.utils import (
     files,
     strings,
+    display,
 )
 from .similarity_metrics import (
     use_similarity,
     sbert_similarity,
 )
+
+def collect_scores(args, cfg, keywords):
+
+    if args.procedure == 'unit_test':
+        base_path = f'{files.project_root()}/data/unit_test/eval'
+    elif args.procedure == 'exec_all':
+        base_path = f'{cfg.response_collection["save_dir"]}/{keywords["timestamp"]}'
+    elif args.procedure == 'evaluate':
+        base_path = f'{cfg.response_collection["save_dir"]}/{args.timestamp}'
+
+    # get file names in target path
+    targets = []
+    for path, subdirs, fnames in os.walk(base_path):
+        for name in fnames:
+            if name.endswith('.json'):
+                targets.append(os.path.join(path, name))
+    targets = sorted(targets)
+
+    metrics = cfg.eval.get('metrics', ['rouge'])
+    if type(metrics) != list:
+        display.error('Error in config: "eval -> metrics" should be a list')
+        raise ValueError('config -> eval -> metrics should be a list')
+    elif metrics == []:
+        display.error('Error in config: "eval -> metrics" should not be empty')
+        raise ValueError('config -> eval -> metrics should not be empty')
+
+    # create headers for markdown table
+    out_table = '| Model | Dataset | Level | # Samples | # Samples Evaluated |'
+    if 'rouge' in metrics:
+        out_table += ' Rouge-1 | Rouge-2 | Rouge-L | Rouge-L Sum |'
+    if 'sem-f1' in metrics:
+        out_table += ' Sem-F1 (USE) | Sem-F1 (Distil) | Sem-F1 (RoBERTa) |'
+    if 'bert_score' in metrics:
+        out_table += ' BERTscore |'
+    if 'fans' in metrics:
+        out_table += ' FaNS |'
+    out_table += '\n' + '| - '*(out_table.count('|')-1) + '|\n'
+    """
+    out_table = '| Model | Sem-F1 (USE) | Sem-F1 (Distil) | Sem-F1 (RoBERTa) | Rouge-1 | ' \
+                + 'Rouge-2 | Rouge-L | Rouge-L Sum | BERTscore |\n' \
+                + '| - | - | - | - | - | - | - | - | - |\n'
+    """
+            
+    # get set of dataset names
+    ds_names = set(cfg.response_collection['datasets'].keys())
+
+    all_scores = []
+    start = time.time()
+    for trgt in tqdm(targets, total=len(targets)):
+        sample_start = time.time()
+        
+        display.info(f'computing metrics for {trgt[len(base_path):]}')
+        ds = Dataset.from_json(
+            trgt,
+            cache_dir=cfg.response_collection['ds_cache'],
+            keep_in_memory=True,
+        )
+
+        # get dataset name for given target
+        trgt_split = set(trgt.replace(base_path, '').split('/'))
+        trgt_ds = trgt_split.intersection(ds_names).pop()
+
+        # remove empty samples
+        before_prune = len(ds)
+        ds = ds.filter(lambda x: x['response'] is not None)
+        ds = ds.filter(lambda x: x['response'].strip() != '')
+        after_prune = len(ds)
+        #print(f'size before filter: {before_prune}\nsize after filter: {after_prune}')
+
+        # compute metrics
+        ref_cols = cfg.response_collection['datasets'][trgt_ds]['ref_col_names']
+        
+        # extract meta-data from file name
+        data_info = trgt[len(base_path)+1:].split('/')
+        data_info.pop(0)
+        trgt_level = data_info.pop(-1).replace('level', '').replace('.json', '')
+
+        # create sample for output dataset
+        trgt_data = {
+            'name': '/'.join(data_info),
+            'dataset': trgt_ds,
+            'level': int(trgt_level),
+            'num_samples': before_prune,
+            'num_evaluated': after_prune,
+        }
+        if 'rouge' in metrics:
+            rouge_scores = compute_rouge(ds, ref_cols)
+            trgt_data.update(rouge_scores)
+        if 'sem-f1' in metrics:
+            semf1 = compute_semf1(ds, ref_cols)
+            trgt_data.update({
+                'sem-f1-use': semf1['f_use'],
+                'sem-f1-distilroberta': semf1['f_distil'],
+                'sem-f1-roberta': semf1['f_rob'],
+            })
+        if 'bert_score' in metrics:
+            bert_score = compute_bertscore(ds, ref_cols)
+            trgt_data.update({
+                'bert_score': bert_score,
+            })
+        if 'fans' in metrics:
+            display.info('implement fans metric')
+            # TODO compute fans score here
+            fans_score = 0
+            trgt_data.update({
+                'fans': fans_score,
+            })
+
+        # add data for output dataset
+        all_scores.append(trgt_data)
+
+        # add row to output markdown table
+        row_str = [f'{val:.02f}' if is_float(val) else str(val) for val in trgt_data.values()]
+        row_str = '| ' + ' | '.join(row_str) + ' |\n'
+        out_table += row_str
+
+        # write out data
+        with open(f'{base_path}/results_table.md', 'w') as f:
+            f.write(out_table)
+        Dataset.from_list(all_scores).to_json(f'{base_path}/results.json')
+
+        end = time.time()
+        print('=================')
+        print(f'Time to Finish Sample: {end-sample_start:.02f} seconds\n'
+            + f'Total Elapsed Time: {(end-start)/60:.02f} minutes')
+        print('=================')
+
+def is_float(val):
+
+    # try to convert to float. fails if not float
+    try:
+        float(val)
+    except:
+        return False
+
+    # try to convert to int. this will fail if val is a float
+    if str(val).isnumeric():
+        return False
+    else:
+        return True
 
 def replace_nones(responses: List[str]):
     out = [el if el is not None else '' for el in responses]
@@ -153,74 +294,3 @@ def compute_semf1(ds: Dataset,
     }
 
     return semf1_metrics
-
-def collect_scores(args, cfg, keywords):
-
-    if args.procedure == 'unit_test':
-        base_path = f'{files.project_root()}/data/unit_test/eval'
-    elif args.procedure == 'exec_all':
-        base_path = f'{cfg.response_collection["save_dir"]}/{keywords["timestamp"]}'
-    elif args.procedure == 'evaluate':
-        base_path = f'{cfg.response_collection["save_dir"]}/{args.timestamp}'
-
-    # get file names in target path
-    targets = []
-    for path, subdirs, fnames in os.walk(base_path):
-        for name in fnames:
-            if name.endswith('.json'):
-                targets.append(os.path.join(path, name))
-    targets = sorted(targets)
-
-    out_table = '| Model | Sem-F1 (USE) | Sem-F1 (Distil) | Sem-F1 (RoBERTa) | Rouge-1 | ' \
-                + 'Rouge-2 | Rouge-L | Rouge-L Sum | BERTscore |\n' \
-                + '| - | - | - | - | - | - | - | - | - |\n'
-            
-    # get set of dataset names
-    ds_names = set(cfg.response_collection['datasets'].keys())
-
-    scores = {}
-    start = time.time()
-    for trgt in tqdm(targets, total=len(targets)):
-        sample_start = time.time()
-        
-        print(f'***** computing metrics for {trgt[len(base_path):]} *****')
-        ds = Dataset.from_json(trgt)
-
-        # get dataset name for given target
-        trgt_split = set(trgt.replace(base_path, '').split('/'))
-        trgt_ds = trgt_split.intersection(ds_names).pop()
-
-        # remove empty samples
-        before_prune = len(ds)
-        ds = ds.filter(lambda x: x['response'] is not None)
-        ds = ds.filter(lambda x: x['response'].strip() != '')
-        after_prune = len(ds)
-        print(f'size before filter: {before_prune}\nsize after filter: {after_prune}')
-
-        # compute metrics
-        ref_cols = cfg.response_collection['datasets'][trgt_ds]['ref_col_names']
-        bert_score = compute_bertscore(ds, ref_cols)
-        rouge_scores = compute_rouge(ds, ref_cols)
-        semf1 = compute_semf1(ds, ref_cols)
-
-        scores[trgt[:len(base_path)]] = {
-            'rouge': rouge_scores,
-            'bert_score': bert_score,
-            'semf1': semf1,
-        }
-
-        out_table += f'| {trgt[len(base_path):]} | {semf1["f_use"]:.02f} | {semf1["f_distil"]:.02f} ' \
-                   + f'| {semf1["f_rob"]:.02f} | {rouge_scores["rouge1"]:.02f} | {rouge_scores["rouge2"]:.02f} ' \
-                   + f'| {rouge_scores["rougeL"]:.02f} | {rouge_scores["rougeLsum"]:.02f} | {bert_score:.02f} |\n'
-
-        with open(f'{base_path}/results_table.md', 'w') as f:
-            f.write(out_table)
-
-        end = time.time()
-        print('=================')
-        print(f'Time to Finish Sample: {end-sample_start:.02f} seconds\n'
-            + f'Total Elapsed Time: {(end-start)/60:.02f} minutes')
-        print('=================')
-
-if __name__ == '__main__':
-    main()

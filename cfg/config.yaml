@@ -50,7 +50,9 @@ response_collection:
 eval:
   metrics:
     - "rouge"
-    - "sem-f1"
+    #- "sem-f1"
+    - "bert_score"
+    #- "fans"
   save_dir: "{{project_root}}/data/results/"
 
 model_params:
