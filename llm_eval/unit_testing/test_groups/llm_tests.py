@@ -5,6 +5,8 @@ import time
 import ray
 from datasets import Dataset
 import traceback
+from vllm.model_executor.parallel_utils.parallel_state import destroy_model_parallel
+from torch.distributed import destroy_process_group
 
 from llm_eval.llm import *
 from llm_eval.utils import (
@@ -90,6 +92,7 @@ def test_llms(args, cfg, keywords):
             ray.shutdown()
             gc.collect()
             torch.cuda.empty_cache()
-
+            destroy_model_parallel()
+            destroy_process_group()
 
 

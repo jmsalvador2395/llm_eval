@@ -26,6 +26,7 @@ class OpenAISession(ChatSession):
         #     full_config = yaml.safe_load(file)
         
         # config = full_config['data_path']
+        self.num_retries = 3
         
         super().__init__(config, model_name)  # Initialize the base class with the loaded configuration
         self.session= OpenAI()
@@ -49,18 +50,22 @@ class OpenAISession(ChatSession):
         responses = []
         messages, return_str = self._prepare_openai_batch(user_message, system_message)
         for msg in tqdm(messages, total=len(messages)):
-            try:
-                response = self.session.chat.completions.create(
-                    model=self.model_name,
-                    messages=msg,
-                )
-                responses.append(response.choices[0].message.content)
-            except KeyboardInterrupt as e:
-                print(e)
-                import sys
-                sys.exit()
-            except Exception as e:
-                responses.append(None)
+            for try_num in range(self.num_retries):
+                try:
+                    response = self.session.chat.completions.create(
+                        model=self.model_name,
+                        messages=msg,
+                    )
+                    responses.append(response.choices[0].message.content)
+                    break
+                except KeyboardInterrupt as e:
+                    print(e)
+                    import sys
+                    sys.exit()
+                except Exception as e:
+                    if try_num == 2:
+                        display.warning('try limit reached for OpenAI API call')
+                        responses.append(None)
         if return_str:
             return responses[0]
         else:

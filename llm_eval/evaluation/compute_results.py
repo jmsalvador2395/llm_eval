@@ -6,16 +6,19 @@ import datasets
 import torch
 import evaluate
 import os
+import re
+import json
 import numpy as np
 #import tensorflow as tf
 from datasets import Dataset
 from nltk import sent_tokenize
-from itertools import product
+from itertools import product, chain
 from pprint import pprint
 from tqdm import tqdm
 import time
 
 # local dependencies
+from llm_eval.llm import *
 from llm_eval.utils import (
     files,
     strings,
@@ -25,6 +28,7 @@ from .similarity_metrics import (
     use_similarity,
     sbert_similarity,
 )
+from .compute_fans import compute_fans
 
 def collect_scores(args, cfg, keywords):
 
@@ -60,19 +64,15 @@ def collect_scores(args, cfg, keywords):
     if 'bert_score' in metrics:
         out_table += ' BERTscore |'
     if 'fans' in metrics:
-        out_table += ' FaNS |'
+        out_table += ' FaNS | # FaNS Samples |'
     out_table += '\n' + '| - '*(out_table.count('|')-1) + '|\n'
-    """
-    out_table = '| Model | Sem-F1 (USE) | Sem-F1 (Distil) | Sem-F1 (RoBERTa) | Rouge-1 | ' \
-                + 'Rouge-2 | Rouge-L | Rouge-L Sum | BERTscore |\n' \
-                + '| - | - | - | - | - | - | - | - | - |\n'
-    """
             
     # get set of dataset names
     ds_names = set(cfg.response_collection['datasets'].keys())
 
     all_scores = []
     start = time.time()
+
     for trgt in tqdm(targets, total=len(targets)):
         sample_start = time.time()
         
@@ -89,8 +89,8 @@ def collect_scores(args, cfg, keywords):
 
         # remove empty samples
         before_prune = len(ds)
-        ds = ds.filter(lambda x: x['response'] is not None)
-        ds = ds.filter(lambda x: x['response'].strip() != '')
+        ds = ds.filter(lambda x: x['response'] is not None, keep_in_memory=True)
+        ds = ds.filter(lambda x: x['response'].strip() != '', keep_in_memory=True)
         after_prune = len(ds)
         #print(f'size before filter: {before_prune}\nsize after filter: {after_prune}')
 
@@ -126,11 +126,10 @@ def collect_scores(args, cfg, keywords):
                 'bert_score': bert_score,
             })
         if 'fans' in metrics:
-            display.info('implement fans metric')
-            # TODO compute fans score here
-            fans_score = compute_fans(ds, ref_cols)
+            fans_score = compute_fans(ds, ref_cols, cfg)
             trgt_data.update({
-                'fans': fans_score,
+                'fans': fans_score['fans_f1'],
+                'fans_num_evaluated': fans_score['num_evaluated'],
             })
 
         # add data for output dataset
@@ -294,46 +293,3 @@ def compute_semf1(ds: Dataset,
     }
 
     return semf1_metrics
-
-def compute_fans(ds: Dataset,
-                  ref_cols: List[str]):
-
-    prompt = f"""
-        I want you to act as a native English linguistic expert. Your task
-        is to help structure a long narrative based on 5W1H, given inside
-        curly brackets {{like this}}. Give the output in json format like
-        this {{who: when: where: what: why: how:}}
-
-        Perform the following actions to analyze the narrative.
-
-        Step 1 - Find out “Who” in the narrative. You can ask the questions
-        delimited by triple backticks to analyze ```Who is speaking in the
-        narrative? Who is involved in the situation? Who is the subject of concern? ```
-
-        Step 2 - Find out “When” in the narrative. You can ask the questions
-        delimited by triple backticks to analyze ``` When did the events take
-        place? When did these concerns arise?  When did this discussion happen?```
-
-        Step 3 - Find out “Where” in the narrative. You can ask the questions
-        delimited by triple backticks to analyze ``` Where did this happen? Where
-        did the events take place? Where did the discussion take place? ```
-
-        Step 4 - Find out “What” in the narrative. You can ask the questions
-        delimited by triple backticks to analyze ```What happened? What is the
-        reason of the concern? What is the significance of this action? What is
-        the focus of the discussion? ``` Use at most 20 words for "what" response.
-
-        Step 5 - Find out “Why” in the narrative. You can ask the questions
-        delimited by triple backticks to analyze ``` Why did this take palce?
-        Why did the actors of the event raise these concerns? Why did these events
-        happen? Why is the discussion taking place?```.Use at most 20 words for "Why" response.
-
-        Step 6 - Find out “How” in the narrative. You can ask the questions
-        delimited by triple backticks to analyze ```How did the event happen?
-        How did these events transpire? How is the actors of the involved in
-        the  situation?```. Use at most 20 words for "How" response.
-
-        Narrative is 
-        """
-
-

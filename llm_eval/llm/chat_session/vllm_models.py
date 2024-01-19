@@ -5,6 +5,7 @@ import torch
 import transformers
 import time
 from vllm import LLM, SamplingParams
+from vllm.transformers_utils.config import get_config
 
 
 # local imports
@@ -30,20 +31,9 @@ class VLlmSession(ChatSession):
 
         model_cache = config.model_params.get('model_cache', None)
 
-        two_gpu_models = [
-            'WizardLM/WizardCoder-3B-V1.0',
-            'WizardLM/WizardCoder-15B-V1.0',
-        ]
-        single_gpu_models = [
-            'tiiuae/falcon-7b-instruct',
-            'tiiuae/falcon-40b-instruct',
-        ]
-
-        tensor_parallel_size = config.model_params['num_devices']
-        if self.model_name in single_gpu_models and tensor_parallel_size > 1:
-            tensor_parallel_size=1
-        elif self.model_name in two_gpu_models and tensor_parallel_size > 2:
-            tensor_parallel_size=2
+        # set number of gpus to use
+        num_devices = config.model_params.get('num_devices', 1)
+        tensor_parallel_size = self._set_tensor_parallel(num_devices)
 
         # Initialize usage statistics
         self.usage = {
@@ -68,10 +58,12 @@ class VLlmSession(ChatSession):
             model_name,
             trust_remote_code=True,
             download_dir=model_cache,
-            #gpu_memory_utilization=1,
             dtype=dtype,
             tensor_parallel_size=tensor_parallel_size,
-            seed=int(time.time())
+            seed=int(time.time()),
+            max_context_len_to_capture=self.max_length,
+            enforce_eager=True,
+            worker_use_ray=True,
         )
 
     def get_response(self,
@@ -100,3 +92,29 @@ class VLlmSession(ChatSession):
             response = [seq.outputs[0].text for seq in seqs]
 
         return response
+
+
+    def _set_tensor_parallel(self, num_devices):
+
+        # get number of attention heads for the model
+        n_head = self._get_num_attn_heads()
+
+        tensor_parallel_size = num_devices
+        while n_head%tensor_parallel_size != 0:
+            tensor_parallel_size -= 1
+
+        return tensor_parallel_size
+
+    def _get_num_attn_heads(self):
+        
+        llm_cfg = get_config(self.model_name, trust_remote_code=True)
+        try:
+            if (str(type(llm_cfg)) == "<class 'transformers.models.llama.configuration_llama.LlamaConfig'>"
+            or  str(type(llm_cfg)) == "<class 'transformers.models.mistral.configuration_mistral.MistralConfig'>"):
+                n_head = llm_cfg.num_attention_heads
+            else:
+                n_head = llm_cfg.n_head
+        except:
+            breakpoint()
+
+        return n_head

@@ -4,6 +4,8 @@
 import jsonlines
 import pandas as pd
 import argparse
+from tqdm import tqdm
+from datasets import Dataset
 from .who_matcher import who_matcher_string_fuzzy_F1
 from .when_matcher import when_matcher_F1
 from .where_matcher import where_matcher_f1
@@ -76,6 +78,46 @@ def all_f1(level, type, score):
             'why_f1': why_f1}
             writer.write(data)
             print(f"Sample: {i}")
+
+def compute_all_f1(ds: Dataset) -> Dataset:
+
+    f1_ds = []
+    for sample in tqdm(ds, desc='computing 5w1h scores'):
+        who_f1 = who_matcher_string_fuzzy_F1(
+            sample['who_pred'],
+            sample['who_ref']
+        )
+        when_f1 = when_matcher_F1(
+            sample['when_pred'],
+            sample['when_ref']
+        )
+        where_f1 = where_matcher_f1(
+            sample['where_pred'],
+            sample['where_ref']
+        )
+        what_f1 = sem_f1(
+            sample['what_pred'],
+            sample['what_ref']
+        )
+        how_f1 = sem_f1(
+            sample['how_pred'],
+            sample['how_ref']
+        )
+        why_f1 = sem_f1(
+            sample['why_pred'],
+            sample['why_ref']
+        )
+        sample.update({
+            'who_f1': who_f1,
+            'what_f1': what_f1,
+            'when_f1': when_f1,
+            'where_f1': where_f1,
+            'why_f1': why_f1,
+            'how_f1': how_f1,
+        })
+        f1_ds.append(sample)
+    f1_ds = Dataset.from_list(f1_ds)
+    return f1_ds
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='Calculate F1 score based on level and score.')

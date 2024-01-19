@@ -158,6 +158,9 @@ class ChatSession:
             usr_msg = [usr_msg]
             return_str=True
 
+            return msg, return_str
+
+
         if sys_msg is None:
             sys_msg = [None]*len(usr_msg)
 

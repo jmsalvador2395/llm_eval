@@ -11,6 +11,7 @@ import datasets
 import time
 from datasets import Dataset
 from vllm.model_executor.parallel_utils.parallel_state import destroy_model_parallel
+from torch.distributed import destroy_process_group
 
 # local imports
 from llm_eval.utils import (
@@ -93,5 +94,6 @@ def run(args, cfg, keywords):
             gc.collect()
             torch.cuda.empty_cache()
             destroy_model_parallel()
+            destroy_process_group()
 
     display.ok('Finished generating responses')
