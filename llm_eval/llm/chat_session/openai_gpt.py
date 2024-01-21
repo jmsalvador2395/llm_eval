@@ -64,8 +64,8 @@ class OpenAISession(ChatSession):
                     sys.exit()
                 except Exception as e:
                     if try_num == 2:
-                        display.warning('try limit reached for OpenAI API call')
-                        responses.append(None)
+                        display.error('try limit reached for OpenAI API call')
+                        responses.append('TIMEOUT ERROR')
         if return_str:
             return responses[0]
         else:
