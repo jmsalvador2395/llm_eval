@@ -29,8 +29,10 @@ def test_llms(args, cfg, keywords):
     ]
 
     llms = [
-        #'chat-bison-001',
+        'chat-bison-001',
+        'gemini-pro',
         'gpt-3.5-turbo',
+        'gpt-4',
         #'meta-llama/Llama-2-7b-chat-hf',
         #'mosaicml/mpt-7b-instruct',
         #'mosaicml/mpt-7b-chat',
@@ -93,6 +95,7 @@ def test_llms(args, cfg, keywords):
             gc.collect()
             torch.cuda.empty_cache()
             destroy_model_parallel()
-            destroy_process_group()
+            if torch.distributed.is_initialized():
+                destroy_process_group()
 
 

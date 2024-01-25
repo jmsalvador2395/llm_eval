@@ -170,7 +170,9 @@ class ChatSession:
             raise ValueError()
 
         # special case for palm and openai models
-        if self.model_name in get_palm_models() + get_gpt_models() :
+        if self.model_name in get_palm_models() \
+                            + get_gpt_models() \
+                            + get_gemini_models():
             return usr_msg, sys_msg, return_str
 
         msg = [self._preprocess_msg(prompt, sys) 

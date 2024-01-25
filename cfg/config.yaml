@@ -7,20 +7,21 @@ response_collection:
   ds_cache: "{{project_root}}/data/cache"
   prompt_template: "{{project_root}}/cfg/prompts/prompts01.yaml"
   models:
-    - "mistralai/Mistral-7B-Instruct-v0.1"
-    - "mistralai/Mistral-7B-Instruct-v0.2"
-    - "lmsys/vicuna-7b-v1.5"
-    - "lmsys/vicuna-7b-v1.5-16k"
-    - "lmsys/vicuna-13b-v1.5"
-    - "lmsys/vicuna-13b-v1.5-16k"
-    - "mosaicml/mpt-7b-instruct"
-    - "mosaicml/mpt-7b-chat"
-    - "meta-llama/Llama-2-7b-chat-hf"
-    - "meta-llama/Llama-2-13b-chat-hf"
-    #- "tiiuae/falcon-7b-instruct"
-    #- "gpt-3.5-turbo"
-    #- "chat-bison-001"
     #- "mistralai/Mistral-7B-Instruct-v0.1"
+    #- "mistralai/Mistral-7B-Instruct-v0.2"
+    #- "lmsys/vicuna-7b-v1.5"
+    #- "lmsys/vicuna-7b-v1.5-16k"
+    #- "lmsys/vicuna-13b-v1.5"
+    #- "lmsys/vicuna-13b-v1.5-16k"
+    #- "mosaicml/mpt-7b-instruct"
+    #- "mosaicml/mpt-7b-chat"
+    #- "meta-llama/Llama-2-7b-chat-hf"
+    #- "meta-llama/Llama-2-13b-chat-hf"
+    #- "tiiuae/falcon-7b-instruct"
+    - "gpt-3.5-turbo"
+    - "gpt-4"
+    - "chat-bison-001"
+    - "gemini-pro"
     #- "meta-llama/Llama-2-70b-chat-hf"
   datasets:
     all_sides: 
@@ -49,10 +50,10 @@ response_collection:
 
 eval:
   metrics:
-    #- "rouge"
-    #- "sem-f1"
-    #- "bert_score"
-    - "fans"
+    - "rouge"
+    - "sem-f1"
+    - "bert_score"
+    #- "fans"
   save_dir: "{{project_root}}/data/results/"
 
 model_params:

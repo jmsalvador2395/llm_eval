@@ -15,6 +15,9 @@ def get_gpt_models() -> list:
 def get_palm_models() -> list:
     return ['chat-bison-001',]
 
+def get_gemini_models() -> list:
+    return ['gemini-pro',]
+
 def get_instruct_models() -> list:
     return sorted([
         'Phind/Phind-CodeLlama-34B-v2',

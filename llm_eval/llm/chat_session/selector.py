@@ -6,6 +6,7 @@ from .wizardcoder import WizardCoderSession
 from .salesforce import SalesforceSession
 from .vllm_models import VLlmSession
 from .palm_models import PalmSession
+from .gemini import GeminiSession
 
 from llm_eval.utils import (
     display,
@@ -27,6 +28,8 @@ def select_chat_model(cfg: dict, model_name: str) -> ChatSession:
         return  OpenAISession(cfg, model_name)
     elif model_name in get_palm_models():
         return PalmSession(cfg, model_name)
+    elif model_name in get_gemini_models():
+        return GeminiSession(cfg, model_name)
     elif model_name in get_vllm_models():
         return VLlmSession(cfg, model_name)
     elif model_name in get_pipeline_models():
