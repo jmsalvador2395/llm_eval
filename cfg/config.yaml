@@ -1,7 +1,7 @@
 
 api_keys:
-    openai: "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"
-    palm: "AIzaSyBWMjuwtqs5OcB4XN3UbR2fyQF2IIqGI4w"
+    openai: "REPLACE_ME"
+    palm: "REPLACE_ME"
 
 response_collection:
   ds_cache: "{{project_root}}/data/cache"
@@ -40,11 +40,6 @@ response_collection:
         - "Annotator2"
         - "Annotator3"
   save_dir: "{{project_root}}/data/results"
-  sys_role: "you are an assistant whose role is to provide its clients with any requested information regarding a multitude of provided documents"
-  prompt: "in 2 or 3 sentences please summarize the overlapping information between two documents. the first is enclosed by the tag <doc1> and the second is enclosed by the tag <doc2>. 
-
-  <doc1> {doc1} <doc1>
-  <doc2> {doc2} <doc2>"
   limit: null
   num_attempts: 3
 

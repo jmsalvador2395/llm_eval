@@ -196,6 +196,7 @@ def compute_bertscore(ds: Dataset,
 
     # load metric
     bertscore = evaluate.load("bertscore")
+    torch.cuda.empty_cache()
 
     # initialize metrics dictionary
     bertscore_metrics = {}
@@ -210,8 +211,11 @@ def compute_bertscore(ds: Dataset,
                     references=bertscore_refs[rc], 
                     lang="en",
                     rescale_with_baseline=rescale_with_baseline,
+                    device='cpu',
                 )
             )
+            torch.cuda.empty_cache()
+
         except Exception as e:
             display.error('failed to compute bertscore at ')
             print(e)
@@ -291,5 +295,6 @@ def compute_semf1(ds: Dataset,
         'r_rob': r_rob_ag,
         'f_rob': 2*(p_rob_ag*r_rob_ag)/(p_rob_ag+r_rob_ag),
     }
+    torch.cuda.empty_cache()
 
     return semf1_metrics
