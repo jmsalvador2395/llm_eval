@@ -26,3 +26,4 @@ vllm
 jsonlines
 fuzzywuzzy
 spacy
+einops

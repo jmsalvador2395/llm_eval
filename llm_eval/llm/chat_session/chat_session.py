@@ -16,17 +16,16 @@ class ChatSession:
         """
 
         if config.model_params.get('use_sampling_params', False):
-            self.max_length = config.model_params.get('max_length', 4096)
             self.num_output_tokens = config.model_params.get('num_output_tokens', 1024)
             self.temperature = config.model_params.get('temperature', 1)
             self.top_k = config.model_params.get('top_k', 40)
             self.top_p = config.model_params.get('top_p', .9)
         else:
-            self.max_length = 4096
             self.num_output_tokens = 1024
             self.temperature = 1
             self.top_k = 40
             self.top_p = .9
+        self.max_length = config.model_params.get('max_length', 4096)
             
         self.config = config
         self.msg_history = []

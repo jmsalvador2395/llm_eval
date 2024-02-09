@@ -27,7 +27,6 @@ def run(args, cfg, keywords):
 
     ds_cache = cfg.response_collection['ds_cache']
     num_attempts = cfg.response_collection['num_attempts']
-    prompt = cfg.response_collection['prompt']
     save_dir = cfg.response_collection['save_dir']
 
     ######### unpack vars from args ######### 
@@ -59,14 +58,13 @@ def run(args, cfg, keywords):
     teler = TELeR(cfg)
     start_time = time.time()
     for ds_name in ds_dict.keys():
-        if limit is None:
-            limit = len(ds_dict[ds_name])
-
         for model_name in cfg.response_collection.get('models', ['gpt-3.5-turbo']):
             session = select_chat_model(cfg, model_name)
 
             for lv in teler.get_levels(ds_name):
                 display.info(f'generating: dataset - {ds_name}, model - {model_name}, level - {lv} prompt')
+                if limit is None:
+                    limit = len(ds_dict[ds_name])
 
                 out_ds = ds_dict[ds_name].select(range(limit))
                 out_ds = teler.format_data(out_ds, ds_name, lv)
@@ -94,6 +92,7 @@ def run(args, cfg, keywords):
             gc.collect()
             torch.cuda.empty_cache()
             destroy_model_parallel()
-            destroy_process_group()
+            if torch.distributed.is_initialized():
+                destroy_process_group()
 
     display.ok('Finished generating responses')

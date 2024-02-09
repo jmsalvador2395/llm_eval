@@ -6,6 +6,7 @@ import transformers
 import time
 from vllm import LLM, SamplingParams
 from vllm.transformers_utils.config import get_config
+import ray
 
 
 # local imports
@@ -61,7 +62,7 @@ class VLlmSession(ChatSession):
             dtype=dtype,
             tensor_parallel_size=tensor_parallel_size,
             seed=int(time.time()),
-            max_context_len_to_capture=self.max_length,
+            max_model_len=self.max_length,
             enforce_eager=True,
             worker_use_ray=True,
         )
@@ -112,6 +113,8 @@ class VLlmSession(ChatSession):
             if (str(type(llm_cfg)) == "<class 'transformers.models.llama.configuration_llama.LlamaConfig'>"
             or  str(type(llm_cfg)) == "<class 'transformers.models.mistral.configuration_mistral.MistralConfig'>"):
                 n_head = llm_cfg.num_attention_heads
+            elif 'mosaicml' in self.model_name:
+                n_head = llm_cfg.n_heads
             else:
                 n_head = llm_cfg.n_head
         except:
