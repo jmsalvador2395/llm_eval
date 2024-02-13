@@ -1,29 +1,29 @@
 
 api_keys:
-    openai: "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"
-    palm: "AIzaSyBWMjuwtqs5OcB4XN3UbR2fyQF2IIqGI4w"
+    palm: "<CHANGE_ME>"
 
 response_collection:
   ds_cache: "{{project_root}}/data/cache"
-  #prompt_template: "{{project_root}}/cfg/prompts/prompts01.yaml"
-  #prompt_template: "{{project_root}}/cfg/prompts/prompts02.yaml"
-  prompt_template: "{{project_root}}/cfg/prompts/prompts03.yaml"
+  prompt_template: "{{project_root}}/cfg/prompts/prompts01.yaml"
   models:
-    - "mistralai/Mistral-7B-Instruct-v0.1"
-    - "mistralai/Mistral-7B-Instruct-v0.2"
-    - "lmsys/vicuna-7b-v1.5"
-    - "lmsys/vicuna-7b-v1.5-16k"
-    - "lmsys/vicuna-13b-v1.5"
-    - "lmsys/vicuna-13b-v1.5-16k"
-    - "mosaicml/mpt-7b-instruct"
-    - "mosaicml/mpt-7b-chat"
-    - "meta-llama/Llama-2-7b-chat-hf"
-    - "meta-llama/Llama-2-13b-chat-hf"
-    #- "tiiuae/falcon-7b-instruct"
-    #- "gpt-3.5-turbo"
-    #- "chat-bison-001"
-    #- "mistralai/Mistral-7B-Instruct-v0.1"
-    #- "meta-llama/Llama-2-70b-chat-hf"
+  - "mistralai/Mistral-7B-Instruct-v0.1"
+  - "mistralai/Mistral-7B-Instruct-v0.2"
+  - "lmsys/vicuna-7b-v1.5"
+  - "lmsys/vicuna-7b-v1.5-16k"
+  - "lmsys/vicuna-13b-v1.5"
+  - "lmsys/vicuna-13b-v1.5-16k"
+  - "mosaicml/mpt-7b-instruct"
+  - "mosaicml/mpt-7b-chat"
+  - "meta-llama/Llama-2-7b-chat-hf"
+  - "meta-llama/Llama-2-13b-chat-hf"
+  - "mosaicml/mpt-30b-chat"
+  - "mosaicml/mpt-30b-instruct"
+  #- "tiiuae/falcon-7b-instruct"
+  #- "gpt-3.5-turbo"
+  #- "gpt-4"
+  #- "chat-bison-001"
+  #- "gemini-pro"
+  #- "meta-llama/Llama-2-70b-chat-hf"
   datasets:
     all_sides: 
       type: "json"
@@ -35,29 +35,25 @@ response_collection:
         - "AllSides_Intersection"
     privacy_policy: 
       type: "csv"
-      path: "{{project_root}}/data/privacy_policy/final_with_v2.csv"
+      path: "{{project_root}}/data/privacy_policy/3p_data.csv"
       ref_col_names: 
         - "Annotator1"
         - "Annotator2"
         - "Annotator3"
   save_dir: "{{project_root}}/data/results"
-  sys_role: "you are an assistant whose role is to provide its clients with any requested information regarding a multitude of provided documents"
-  prompt: "in 2 or 3 sentences please summarize the overlapping information between two documents. the first is enclosed by the tag <doc1> and the second is enclosed by the tag <doc2>. 
-
-  <doc1> {doc1} <doc1>
-  <doc2> {doc2} <doc2>"
-  limit: null
   num_attempts: 3
 
 eval:
   metrics:
     - "rouge"
     - "sem-f1"
+    - "bert_score"
+    #- "fans"
   save_dir: "{{project_root}}/data/results/"
 
 model_params:
-  model_cache: "{{project_root}}/data/llm_cache"
-  #model_cache: "/data/shared/llm_cache"
+  #model_cache: "{{project_root}}/data/llm_cache"
+  model_cache: "/data/shared/llm_cache"
   #model_cache: "/data/john/cache"
   use_sampling_params: False
   max_length: 2048
@@ -65,12 +61,12 @@ model_params:
   temperature: 0.8
   batch_size: 2
   num_devices: 4
-  dtype: "float16"
-  #dtype: "auto"
+  #dtype: "float16"
+  dtype: "auto"
 
 unit_test: 
   cases:
-    - "eval"
-    #- "llm-responses"
+    #- "eval"
+    - "llm-responses"
     #- "teler"
 

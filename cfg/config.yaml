@@ -1,28 +1,29 @@
 
 api_keys:
-    openai: "REPLACE_ME"
-    palm: "REPLACE_ME"
+    palm: "<CHANGE_ME>"
 
 response_collection:
   ds_cache: "{{project_root}}/data/cache"
   prompt_template: "{{project_root}}/cfg/prompts/prompts01.yaml"
   models:
-    #- "mistralai/Mistral-7B-Instruct-v0.1"
-    #- "mistralai/Mistral-7B-Instruct-v0.2"
-    #- "lmsys/vicuna-7b-v1.5"
-    #- "lmsys/vicuna-7b-v1.5-16k"
-    #- "lmsys/vicuna-13b-v1.5"
-    #- "lmsys/vicuna-13b-v1.5-16k"
-    #- "mosaicml/mpt-7b-instruct"
-    #- "mosaicml/mpt-7b-chat"
-    #- "meta-llama/Llama-2-7b-chat-hf"
-    #- "meta-llama/Llama-2-13b-chat-hf"
-    #- "tiiuae/falcon-7b-instruct"
-    - "gpt-3.5-turbo"
-    - "gpt-4"
-    - "chat-bison-001"
-    - "gemini-pro"
-    #- "meta-llama/Llama-2-70b-chat-hf"
+  - "mistralai/Mistral-7B-Instruct-v0.1"
+  - "mistralai/Mistral-7B-Instruct-v0.2"
+  - "lmsys/vicuna-7b-v1.5"
+  - "lmsys/vicuna-7b-v1.5-16k"
+  - "lmsys/vicuna-13b-v1.5"
+  - "lmsys/vicuna-13b-v1.5-16k"
+  - "mosaicml/mpt-7b-instruct"
+  - "mosaicml/mpt-7b-chat"
+  - "meta-llama/Llama-2-7b-chat-hf"
+  - "meta-llama/Llama-2-13b-chat-hf"
+  - "mosaicml/mpt-30b-chat"
+  - "mosaicml/mpt-30b-instruct"
+  #- "tiiuae/falcon-7b-instruct"
+  #- "gpt-3.5-turbo"
+  #- "gpt-4"
+  #- "chat-bison-001"
+  #- "gemini-pro"
+  #- "meta-llama/Llama-2-70b-chat-hf"
   datasets:
     all_sides: 
       type: "json"
@@ -34,13 +35,12 @@ response_collection:
         - "AllSides_Intersection"
     privacy_policy: 
       type: "csv"
-      path: "{{project_root}}/data/privacy_policy/final_with_v2.csv"
+      path: "{{project_root}}/data/privacy_policy/3p_data.csv"
       ref_col_names: 
         - "Annotator1"
         - "Annotator2"
         - "Annotator3"
   save_dir: "{{project_root}}/data/results"
-  limit: null
   num_attempts: 3
 
 eval:
