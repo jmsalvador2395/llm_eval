@@ -31,7 +31,8 @@ def load(path_str: str, debug=False):
 
     base_cfg = {
         'api_keys': {},
-        'response_collection': {},
+        'datasets': {},
+        'resp_coll': {},
         'eval': {},
         'unit_test': {},
         'model_params': {},

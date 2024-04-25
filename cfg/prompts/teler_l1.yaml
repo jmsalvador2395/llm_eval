@@ -1,0 +1,124 @@
+common:
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+
+    In one sentence, please tell me the overlapping information between Document 1 and Document 2
+
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+
+    summarize the overlapping information between the documents.
+
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+
+    output the overlapping information between the documents.
+
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+
+    output the common information between the documents.
+
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+
+    output only the overlapping information
+
+all_sides:
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+
+    In one sentence, please tell me the overlapping information between article 1 and article 2
+
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+
+    summarize the overlapping information between the articles
+
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+
+    output the overlapping information of the events covered in these articles
+
+
+privacy_policy:
+  - |
+    Policy 1:
+    {{doc1}}
+
+
+    Policy 2:
+    {{doc2}}
+
+
+    In one sentence, please tell me the overlapping information between policy 1 and policy 2
+
+  - |
+    Policy 1:
+    {{doc1}}
+
+
+    Policy 2:
+    {{doc2}}
+
+
+    summarize the information that the two policies share
+
+  - |
+    Policy 1:
+    {{doc1}}
+
+
+    Policy 2:
+    {{doc2}}
+
+
+    what is the shared information between the two policies

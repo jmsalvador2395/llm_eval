@@ -1,0 +1,94 @@
+common:
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+    summarize the overlapping information between the two documents. explain the who, what, when, where, and why to give full context. 
+
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+    summarize the overlapping information between the two documents. explain the who, what, when, where, and why to give full context. the output should be two sentences at most.
+
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+    output the shared information between the documents. do not include any information outside of the shared information. keep your response short.
+
+all_sides:
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+    these articles share similarities. output the information that is shared between them. keep your output short. to be as accurate as possible, cover the "who, what, when, where, and why of the shared information.
+
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+    who or what are the common subjects of the two documents? what events are common between the documents? do the documents mention any locations that are the same between the two? give your response in a single sentence.
+
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+    summarize the overalp
+privacy_policy:
+  - |
+    Policy 1:
+    {{doc1}}
+
+
+    Policy 2:
+    {{doc2}}
+
+    
+    These policies are categorized under "{{Category}}". Describe the common aspects of these two policies in terms of this category. make sure to include the shared entities, actions and scope of the documents. Do not make any mention of information that is not shared between them. Keep your response short
+
+  - |
+    Policy 1:
+    {{doc1}}
+
+
+    Policy 2:
+    {{doc2}}
+
+    
+    These policies are categorized under "{{Category}}". Describe the common aspects of these two policies in terms of this category. make sure to include the shared entities, actions and scope of the documents. Do not make any mention of information that is not shared between them. give your response in a single sentence.
+
+  - |
+    Policy 1:
+    {{doc1}}
+
+
+    Policy 2:
+    {{doc2}}
+
+    
+    These privacy policy excerpts are tagged with the category: "{{Category}}". summarize the overlapping information between the documents. to be as accurate as possible, cover the who, what, when, where, and why of the common information.

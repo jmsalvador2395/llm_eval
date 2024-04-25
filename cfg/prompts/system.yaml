@@ -1,0 +1,13 @@
+common:
+  - "you are to read several documents and briefly provide information according to the user's needs"
+  - "you are to read several documents and provide concise answers to the user"
+  - "you will read two documents and give brief answers to user questions"
+  - "you are a machine who is given 3 inputs: document 1, document 2, and the instructions. your output will adhere to these 3 inputs."
+  - "you will be given 2 documents and a set of instructions. follow the instructions as closely as possible."
+  - "you will be given 2 documents and a set of instructions. your response to these instructions will rely on the material covered in the 2 documents."
+all_sides:
+  - "you will be given two news articles to read. then you will be given an instruction. follow these instructions as closely as possible"
+  - "you will read two news articles and answer any questions about them"
+privacy_policy:
+  - "you are to read two privacy policies and briefly provide information according to the user's needs"
+  - "you are to read two privacy policies and provide concise answers to the user"

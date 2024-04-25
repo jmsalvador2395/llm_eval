@@ -28,7 +28,7 @@ from .similarity_metrics import (
     use_similarity,
     sbert_similarity,
 )
-from .compute_fans import compute_fans
+#from .compute_fans import compute_fans
 
 def collect_scores(args, cfg, keywords):
 
@@ -125,12 +125,14 @@ def collect_scores(args, cfg, keywords):
             trgt_data.update({
                 'bert_score': bert_score,
             })
+        """
         if 'fans' in metrics:
             fans_score = compute_fans(ds, ref_cols, cfg)
             trgt_data.update({
                 'fans': fans_score['fans_f1'],
                 'fans_num_evaluated': fans_score['num_evaluated'],
             })
+        """
 
         # add data for output dataset
         all_scores.append(trgt_data)

@@ -4,7 +4,7 @@ import traceback
 import sys
 
 # local imports
-from llm_eval.teler import TELeR
+from llm_eval.prompt_generator import TELeR
 from llm_eval.utils import (
     files,
     display,

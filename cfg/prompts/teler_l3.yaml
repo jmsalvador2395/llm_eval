@@ -1,0 +1,102 @@
+common:
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+
+    please answer the following:
+    - who or what are the common subjects of the two documents
+    - what events are common between the documents
+    - do the documents mention any locations that are the same between the two
+    - keep your response brief. 2 sentences max.
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+
+    Consider the following questions and respond in a single sentence:
+    - who or what are the common subjects of the two documents
+    - what events are common between the documents
+    - do the documents mention any locations that are the same between the two
+all_sides:
+  - |
+    Article 1:
+    {{doc1}}
+
+
+    Article 2:
+    {{doc2}}
+
+
+    Given these two news articles, consider the following questions and respond in a single sentence:
+    - summarize the common information in the articles
+    - make note of who or what are the articles talking about
+    - make sure your response captures any common locations
+    - your summary should be brief. 1 or 2 sentences.
+  - |
+    Article 1:
+    {{doc1}}
+
+
+    Article 2:
+    {{doc2}}
+
+
+    Given these two news articles, consider the following questions and respond in a single sentence:
+    - summarize the common information in the articles
+    - make sure your response answers who, what when, where, and why for the two documents.
+    - your summary should be brief. 1 or 2 sentences.
+
+privacy_policy:
+  - |
+    Policy 1:
+    {{doc1}}
+
+
+    Policy 2:
+    {{doc2}}
+
+
+    These policies are categorized under "{{Category}}". With this in mind, please answer the following:
+    - Describe the common aspects of these two policies in terms of this category.
+    - make sure to include the shared entities, actions and scope of the documents.
+    - Do not make any mention of information that is not shared between them.
+    - Do not respond in a list format and instead respond normally.
+    - Keep your response to 3 sentences at most
+
+  - |
+    Policy 1:
+    {{doc1}}
+
+
+    Policy 2:
+    {{doc2}}
+
+
+    These policies are labelled under the "{{Category}}" category. With this in mind, use a single sentence that answers the following:
+    - Describe the common aspects of these two policies in terms of this category.
+    - make sure to include the shared entities, actions and scope of the documents.
+    - Do not make any mention of information that is not shared between them.
+    - Do not respond in a list format and instead respond normally.
+
+  - |
+    Policy 1:
+    {{doc1}}
+
+
+    Policy 2:
+    {{doc2}}
+
+
+    These policies are labelled under the "{{Category}}" category. With this in mind, use a single sentence that answers the following:
+    - summarize the information that is shared between the policies
+    - cover the who, what, when, where, and why of the common information
+    - respond in as few sentences as possible

@@ -19,15 +19,15 @@ from llm_eval.utils import (
     files,
 )
 from llm_eval.llm import *
-from llm_eval.teler import TELeR
+from llm_eval.prompt_generator import TELeR, PromptGenerator
 
 def run(args, cfg, keywords):
 
     ######### unpack vars from cfg ##########
 
-    ds_cache = cfg.response_collection['ds_cache']
-    num_attempts = cfg.response_collection['num_attempts']
-    save_dir = cfg.response_collection['save_dir']
+    ds_cache = cfg.resp_coll['ds_cache']
+    num_attempts = cfg.resp_coll['num_attempts']
+    save_dir = cfg.resp_coll['save_dir']
 
     ######### unpack vars from args ######### 
     
@@ -38,7 +38,7 @@ def run(args, cfg, keywords):
     # load in datasets
     ds_dict = {}
     try:
-        d_sets = cfg.response_collection['datasets']
+        d_sets = cfg.datasets
         for ds_name, d_set in d_sets.items():
             ds = datasets.load_dataset(
                 d_set['type'],
@@ -54,13 +54,34 @@ def run(args, cfg, keywords):
         traceback.print_exception(*sys.exc_info())
         os._exit(0)
 
+    prmpt_gen = PromptGenerator(cfg)
+    prompt_data = prmpt_gen.prepare_data(ds_dict)
+
     # load teler
-    teler = TELeR(cfg)
     start_time = time.time()
     for ds_name in ds_dict.keys():
         for model_name in cfg.response_collection.get('models', ['gpt-3.5-turbo']):
             session = select_chat_model(cfg, model_name)
 
+            # collect responses
+            responses = session.get_response(
+                prompt_data['prompt'], 
+                prompt_data['system'],
+            )
+            out_ds = prompt_data.add_column('response', responses)
+
+            # saves ds to output directory
+            out_pth = f'{save_dir}/{model_name}/results.json'
+            files.create_path(files.dirname(out_pth))
+            out_ds.to_json(out_pth)
+
+            ckpt_time = time.time()
+            elapsed = ckpt_time-start_time
+            display.info(
+                f'Elapsed Time: {elapsed:.02f} seconds ({elapsed/60:.02f} minutes or {elapsed/3600:.02f} hours)'
+            )
+
+            """
             for lv in teler.get_levels(ds_name):
                 display.info(f'generating: dataset - {ds_name}, model - {model_name}, level - {lv} prompt')
                 if limit is None:
@@ -85,6 +106,7 @@ def run(args, cfg, keywords):
                 display.info(
                     f'Elapsed Time: {elapsed:.02f} seconds ({elapsed/60:.02f} minutes or {elapsed/3600:.02f} hours)'
                 )
+            """
 
             # session cleanup
             del session

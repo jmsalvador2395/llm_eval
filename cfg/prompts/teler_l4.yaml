@@ -1,0 +1,122 @@
+all_sides:
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+  
+    your goal is to describe all the common information between the given documents. to accomplish this you will need to answer the following:
+    - who or what are the common subjects of the two documents
+    - what events are common between the documents
+    - do the documents mention any locations that are the same between the two
+    - keep your response brief. 2 sentences max.
+
+    your response will be evaluated according to how similar it is to a "reference summary".
+    For example, an output of "cat" could be compared to "light" to get a score of 0 but that same output could be compared to "cat" to receive a score of 100. These reference summaries are brief so going over 2 sentences could lead to poor scores.
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+  
+    your goal is to describe all the common information between the given documents. to accomplish this you will need to answer the following:
+    - who or what are the common subjects of the two documents
+    - what events are common between the documents
+    - do the documents mention any locations that are the same between the two
+
+    your response will be evaluated according to how similar it is to a "reference summary".
+    Example:
+    Question: what is common between the sentence "the dog is slow" and "the dog is fast"
+    Reference Summary: Both sentences talk about the speed of a dog
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+  
+    your goal is to describe all the common information between the given documents in one sentence. your single-sentence response will need to caputre the following:
+    - the common events
+    - common people
+    - common locations
+    - the overlapping narrative of the documents
+
+    your response will be evaluated according to how similar it is to a "reference summary".
+    Example:
+    Doc1: the dog is slow
+    Doc2: the dog is fast
+    Reference Summary: Both sentences talk about the speed of a dog
+
+privacy_policy:
+  - |
+    Policy 1:
+    {{doc1}}
+
+
+    Policy 2:
+    {{doc2}}
+
+  
+    your goal is to describe all the common information between the given privacy policies. 
+    to accomplish this you will need to answer according to the following:
+    - Describe the common aspects of these two policies in terms of this category.
+    - make sure to include the shared entities, actions and scope of the documents.
+    - Do not make any mention of information that is not shared between them.
+    - Do not respond in a list format and instead respond normally.
+    - Keep your response to 3 sentences at most
+
+    your response will be evaluated according to how similar it is to a "reference summary".
+    For example, an output of "cat" could be compared to "light" to get a score of 0 but that same output could be compared to "cat" to receive a score of 100. These reference summaries are usually quite short so it is important to keep your response to 3 sentences or less.
+  - |
+    Policy 1:
+    {{doc1}}
+
+
+    Policy 2:
+    {{doc2}}
+
+  
+    your goal is to describe all the common information between the given documents in one sentence. your single-sentence response will need to include the following:
+    - common aspects related to the given category
+    - common entities
+    - common applications
+
+    your response will be evaluated according to how similar it is to a "reference summary".
+
+    Example Documents:
+    Doc1: the dog is slow
+    Doc2: the dog is fast
+
+    Example Response:
+    Both sentences talk about the speed of a dog
+
+  - |
+    Policy 1:
+    {{doc1}}
+
+
+    Policy 2:
+    {{doc2}}
+
+  
+    your goal is to describe all the common information between the given documents in one sentence. your single-sentence response will need to include the following:
+    - common aspects related to the given category
+    - common entities
+    - common applications
+
+    your response will be evaluated according to how similar it is to a "reference summary".
+
+    Example Documents:
+    Doc1: the dog is slow
+    Doc2: the dog is fast
+
+    Example Response:
+    Both sentences talk about the speed of a dog

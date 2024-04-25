@@ -1,0 +1,18 @@
+common:
+  - |
+    Document 1:
+    {{example_doc1}}
+
+    Document 2:
+    {{example_doc2}}
+
+    Summary:
+    {{example_ref}}
+
+    Document 1:
+    {{doc1}}
+
+    Document 2:
+    {{doc2}}
+
+    Summary:
