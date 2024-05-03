@@ -69,7 +69,8 @@ class VLlmSession(ChatSession):
 
     def get_response(self,
                      user_message:   str | list,
-                     system_message: str | list=None):
+                     system_message: str | list=None,
+                     prog_bar=True):
         """
         Retrieves a response from the vLLM language model.
         """
@@ -82,6 +83,7 @@ class VLlmSession(ChatSession):
         seqs = self.model.generate(
             msg,
             sampling_params=self.sampling_params,
+            use_tqdm=prog_bar
         )
 
 

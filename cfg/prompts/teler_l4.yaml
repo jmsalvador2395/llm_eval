@@ -1,3 +1,43 @@
+common:
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+
+    Write a summary of the given documents that follows these instructions:
+    - who or what are the common subjects of the two documents
+    - what events are common between the documents
+    - do the documents mention any locations that are the same between the two
+    - keep your response brief. 2 sentences max.
+
+    your response will be evaluated according to how similar it is to a "reference summary".
+    For Example:
+    Doc1: i have a dog. it's pretty fast.
+    Doc2: i have a dog. he is a slow runner
+    Reference Summary: i have a dog.
+  - |
+    Document 1:
+    {{doc1}}
+
+
+    Document 2:
+    {{doc2}}
+
+
+    Summarize the overlapping information between these documents. your summary should follow these instructions:
+    - exclude any information that is similar but differing or contradictory
+    - write the summary as if you were summarizing a single document.
+    - your summary should be short. keep it within 2 sentences.
+
+    your response will be evaluated according to how similar it is to a "reference summary".
+    For Example:
+    Doc1: i have a dog. it's pretty fast.
+    Doc2: i have a dog. he is a slow runner
+    Reference Summary: i have a dog.
 all_sides:
   - |
     Document 1:
@@ -14,8 +54,10 @@ all_sides:
     - do the documents mention any locations that are the same between the two
     - keep your response brief. 2 sentences max.
 
-    your response will be evaluated according to how similar it is to a "reference summary".
-    For example, an output of "cat" could be compared to "light" to get a score of 0 but that same output could be compared to "cat" to receive a score of 100. These reference summaries are brief so going over 2 sentences could lead to poor scores.
+    For Example:
+    Doc1: i have a dog. it's pretty fast.
+    Doc2: i have a dog. he is a slow runner
+    Reference Summary: i have a dog.
   - |
     Document 1:
     {{doc1}}
@@ -75,6 +117,12 @@ privacy_policy:
 
     your response will be evaluated according to how similar it is to a "reference summary".
     For example, an output of "cat" could be compared to "light" to get a score of 0 but that same output could be compared to "cat" to receive a score of 100. These reference summaries are usually quite short so it is important to keep your response to 3 sentences or less.
+
+    your response will be evaluated according to how similar it is to a "reference summary".
+    Example:
+    Doc1: the dog is slow
+    Doc2: the dog is fast
+    Reference Summary: Both sentences talk about the speed of a dog
   - |
     Policy 1:
     {{doc1}}

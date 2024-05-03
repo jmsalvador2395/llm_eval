@@ -38,8 +38,9 @@ class OpenAISession(ChatSession):
         }
 
     def get_response(self,
-                     user_message:   list | str,
-                     system_message: list | str=None):
+                     user_message: list | str,
+                     system_message: list | str=None,
+                     prog_bar: bool=False):
         """
         Retrieves a response from OpenAI's language model.
 
@@ -49,7 +50,14 @@ class OpenAISession(ChatSession):
         """
         responses = []
         messages, return_str = self._prepare_openai_batch(user_message, system_message)
-        for msg in tqdm(messages, total=len(messages)):
+
+        # decide whether to use progress bar
+        if prog_bar:
+            msg_iterator = tqdm(messages, total=len(messages))
+        else:
+            msg_iterator = messages
+
+        for msg in msg_iterator:
             for try_num in range(self.num_retries):
                 try:
                     response = self.session.chat.completions.create(
@@ -78,8 +86,8 @@ class OpenAISession(ChatSession):
     getting rid of this
     """
     def _get_response(self,
-                     user_message:   list | str,
-                     system_message: list | str=None):
+                     user_message: list | str,
+                     system_message: list | str=None,):
         """
         Retrieves a response from OpenAI's language model.
 

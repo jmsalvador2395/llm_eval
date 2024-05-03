@@ -27,6 +27,9 @@ datasets:
 
 resp_coll:
   ds_cache: "{{project_root}}/data/cache"
+  save_dir: "{{project_root}}/data/results"
+  num_attempts: 3
+  checkpoint_interval: 50
   prompt_templates: 
     sys: "{{project_root}}/cfg/prompts/system.yaml"
     icl: "{{project_root}}/cfg/prompts/in_context_learning.yaml"
@@ -36,6 +39,8 @@ resp_coll:
     l3: "{{project_root}}/cfg/prompts/teler_l3.yaml"
     l4: "{{project_root}}/cfg/prompts/teler_l4.yaml"
   models:
+#    - "gpt-3.5-turbo"
+#    - "gpt-4"
     - "mistralai/Mistral-7B-Instruct-v0.1"
     - "mistralai/Mistral-7B-Instruct-v0.2"
     - "lmsys/vicuna-7b-v1.5"
@@ -48,14 +53,10 @@ resp_coll:
     - "meta-llama/Llama-2-13b-chat-hf"
     - "mosaicml/mpt-30b-chat"
     - "mosaicml/mpt-30b-instruct"
-    #- "tiiuae/falcon-7b-instruct"
-    #- "gpt-3.5-turbo"
-    #- "gpt-4"
-    #- "chat-bison-001"
-    #- "gemini-pro"
-    #- "meta-llama/Llama-2-70b-chat-hf"
-  save_dir: "{{project_root}}/data/results"
-  num_attempts: 3
+#    #- "tiiuae/falcon-7b-instruct"
+#    #- "chat-bison-001"
+#    #- "gemini-pro"
+#    #- "meta-llama/Llama-2-70b-chat-hf"
 
 eval:
   metrics:
@@ -66,11 +67,11 @@ eval:
   save_dir: "{{project_root}}/data/results/"
 
 model_params:
-  #model_cache: "{{project_root}}/data/llm_cache"
-  model_cache: "/data/shared/llm_cache"
+  model_cache: "{{project_root}}/data/llm_cache"
+  #model_cache: "/data/shared/llm_cache"
   #model_cache: "/data/john/cache"
   use_sampling_params: False
-  max_length: 2048
+  max_length: 2600
   num_output_tokens: 512
   temperature: 0.8
   batch_size: 2

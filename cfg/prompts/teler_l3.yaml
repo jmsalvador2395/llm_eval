@@ -50,10 +50,24 @@ all_sides:
     {{doc2}}
 
 
-    Given these two news articles, consider the following questions and respond in a single sentence:
+    Given these two news articles, consider the following questions and write a brief response:
     - summarize the common information in the articles
     - make sure your response answers who, what when, where, and why for the two documents.
     - your summary should be brief. 1 or 2 sentences.
+  - |
+    Article 1:
+    {{doc1}}
+
+
+    Article 2:
+    {{doc2}}
+
+
+    Given these two news articles, write a brief summary that follows the following points:
+    - write a summary that captures the overlapping information between the articles.
+    - exclude any information that slightly differs.
+    - keep your summary within 2 sentences.
+
 
 privacy_policy:
   - |
