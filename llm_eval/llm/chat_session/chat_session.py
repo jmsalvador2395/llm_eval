@@ -1,5 +1,6 @@
 from llm_eval.utils import display
 from llm_eval.llm.model_list import *
+import re
 
 class ChatSession:
     """
@@ -214,11 +215,16 @@ class ChatSession:
             msg = f'[INST] {usr_msg} [/INST]'
             return msg 
 
-        elif 'lmsys/vicuna'       in self.model_name \
+        elif 'lmsys/vicuna' in self.model_name \
           or 'falcon-7b-instruct' in self.model_name:
             msg = f'USER: {usr_msg.strip()}\nASSISTANT: '
             if sys_msg is not None:
                 msg = sys_msg.strip() + '\n\n' + msg
             return msg
+        elif re.search(r'Phi-3.*instruct', self.model_name):
+            sys_msg = f'{sys_msg}\n\n' or ''
+            msg = f'<|user|>\n{sys_msg}{usr_msg.strip()}<|end|>\n<|assistant|>'
+            return msg
         else:
+            breakpoint()
             return usr_msg

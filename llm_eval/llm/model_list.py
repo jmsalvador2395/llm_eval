@@ -55,6 +55,7 @@ def get_llama_chat_models() -> list:
         'meta-llama/Llama-2-7b-chat-hf',
         'meta-llama/Llama-2-13b-chat-hf',
         'meta-llama/Llama-2-70b-chat-hf',
+        'meta-llama/Meta-Llama-3-8B-Instruct',
     ]
 def get_dolly_instruction_models() -> list:
     return [
@@ -104,13 +105,13 @@ def get_vllm_models() -> list:
         'meta-llama/Llama-2-7b-chat-hf',
         'meta-llama/Llama-2-13b-chat-hf',
         'meta-llama/Llama-2-70b-chat-hf',
+        'meta-llama/Meta-Llama-3-8B-Instruct',
         'mosaicml/mpt-7b-instruct',
         'mosaicml/mpt-7b-chat',
         'mosaicml/mpt-30b-chat',
         'mosaicml/mpt-30b-instruct',
-        #'WizardLM/WizardCoder-1B-V1.0',
-        #'WizardLM/WizardCoder-3B-V1.0',
-        #'WizardLM/WizardCoder-15B-V1.0',
+        'microsoft/Phi-3-mini-4k-instruct',
+        'microsoft/Phi-3-mini-128k-instruct',
     ])
 
 def get_generation_models() -> list:

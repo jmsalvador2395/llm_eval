@@ -66,6 +66,8 @@ def collect_scores(args, cfg, keywords):
     if 'fans' in metrics:
         out_table += ' FaNS | # FaNS Samples |'
     out_table += '\n' + '| - '*(out_table.count('|')-1) + '|\n'
+
+    breakpoint()
             
     # get set of dataset names
     ds_names = set(cfg.response_collection['datasets'].keys())

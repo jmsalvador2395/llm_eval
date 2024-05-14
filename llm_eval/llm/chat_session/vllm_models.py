@@ -7,10 +7,18 @@ import time
 from vllm import LLM, SamplingParams
 from vllm.transformers_utils.config import get_config
 import ray
+import sys
+
+# import config classes for checking number of attention heads
+from transformers.models.llama.configuration_llama import LlamaConfig
+from transformers.models.mistral.configuration_mistral import (
+    MistralConfig
+)
 
 
 # local imports
 from .chat_session import ChatSession
+from llm_eval.utils import display
 
 class VLlmSession(ChatSession):
     """
@@ -67,15 +75,19 @@ class VLlmSession(ChatSession):
             worker_use_ray=True,
         )
 
-    def get_response(self,
-                     user_message:   str | list,
-                     system_message: str | list=None,
-                     prog_bar=True):
+    def get_response(
+                self,
+                user_message: str | list,
+                system_message: str | list=None,
+                prog_bar=True):
         """
         Retrieves a response from the vLLM language model.
         """
 
-        msg, return_str = self._prepare_batch(user_message, system_message)
+        msg, return_str = self._prepare_batch(
+            user_message, 
+            system_message
+        )
         # Implement the logic to interact with the LLAMA2 model's API
         # This is a placeholder implementation
 
@@ -88,7 +100,8 @@ class VLlmSession(ChatSession):
 
 
         # Update history and usage statistics
-        # [Rest of the method should handle response parsing and updating the session similar to OpenAISession]
+        # [Rest of the method should handle response parsing and 
+        # updating the session similar to OpenAISession]
         if return_str:
             response = seqs[0].outputs[0].text
         else:
@@ -112,14 +125,22 @@ class VLlmSession(ChatSession):
         
         llm_cfg = get_config(self.model_name, trust_remote_code=True)
         try:
-            if (str(type(llm_cfg)) == "<class 'transformers.models.llama.configuration_llama.LlamaConfig'>"
-            or  str(type(llm_cfg)) == "<class 'transformers.models.mistral.configuration_mistral.MistralConfig'>"):
+            if (isinstance(llm_cfg, LlamaConfig)
+                    or isinstance(llm_cfg, MistralConfig)
+                    or 'Phi3Config' in str(type(llm_cfg))):
                 n_head = llm_cfg.num_attention_heads
             elif 'mosaicml' in self.model_name:
                 n_head = llm_cfg.n_heads
             else:
                 n_head = llm_cfg.n_head
+        except KeyboardInterrupt:
+            sys.exit()
         except:
+            display.warning(
+                'search through `llm_cfg` to find the argument for # '
+                'of attention heads'
+            )
             breakpoint()
+
 
         return n_head

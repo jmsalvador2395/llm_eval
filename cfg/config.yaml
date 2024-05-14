@@ -1,6 +1,6 @@
 
 api_keys:
-    palm: "<CHANGE_ME>"
+    palm: AIzaSyBb8GFD5qPUtZ62zaZ3a2Vh8GMgoRg0UnI
 
 datasets:
   all_sides: 
@@ -39,23 +39,26 @@ resp_coll:
     l3: "{{project_root}}/cfg/prompts/teler_l3.yaml"
     l4: "{{project_root}}/cfg/prompts/teler_l4.yaml"
   models:
+    - microsoft/Phi-3-mini-4k-instruct
+    - microsoft/Phi-3-mini-128k-instruct
+    - meta-llama/Meta-Llama-3-8B-Instruct
+#    - "gemini-pro"
 #    - "gpt-3.5-turbo"
 #    - "gpt-4"
-    - "mistralai/Mistral-7B-Instruct-v0.1"
-    - "mistralai/Mistral-7B-Instruct-v0.2"
-    - "lmsys/vicuna-7b-v1.5"
-    - "lmsys/vicuna-7b-v1.5-16k"
-    - "lmsys/vicuna-13b-v1.5"
-    - "lmsys/vicuna-13b-v1.5-16k"
-    - "mosaicml/mpt-7b-instruct"
-    - "mosaicml/mpt-7b-chat"
-    - "meta-llama/Llama-2-7b-chat-hf"
-    - "meta-llama/Llama-2-13b-chat-hf"
-    - "mosaicml/mpt-30b-chat"
-    - "mosaicml/mpt-30b-instruct"
+#    - "mistralai/Mistral-7B-Instruct-v0.1"
+#    - "mistralai/Mistral-7B-Instruct-v0.2"
+#    - "lmsys/vicuna-7b-v1.5"
+#    - "lmsys/vicuna-7b-v1.5-16k"
+#    - "lmsys/vicuna-13b-v1.5"
+#    - "lmsys/vicuna-13b-v1.5-16k"
+#    - "mosaicml/mpt-7b-instruct"
+#    - "mosaicml/mpt-30b-instruct"
+#    - "mosaicml/mpt-7b-chat"
+#    - "mosaicml/mpt-30b-chat"
+#    - "meta-llama/Llama-2-7b-chat-hf"
+#    - "meta-llama/Llama-2-13b-chat-hf"
 #    #- "tiiuae/falcon-7b-instruct"
 #    #- "chat-bison-001"
-#    #- "gemini-pro"
 #    #- "meta-llama/Llama-2-70b-chat-hf"
 
 eval:
@@ -71,7 +74,8 @@ model_params:
   #model_cache: "/data/shared/llm_cache"
   #model_cache: "/data/john/cache"
   use_sampling_params: False
-  max_length: 2600
+  #max_length: 2600
+  max_length: 2048
   num_output_tokens: 512
   temperature: 0.8
   batch_size: 2

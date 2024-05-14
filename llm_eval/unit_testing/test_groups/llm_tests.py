@@ -5,7 +5,9 @@ import time
 import ray
 from datasets import Dataset
 import traceback
-from vllm.model_executor.parallel_utils.parallel_state import destroy_model_parallel
+#from vllm.model_executor.parallel_utils.parallel_state import destroy_model_parallel
+from vllm import distributed
+from vllm.distributed import destroy_model_parallel
 from torch.distributed import destroy_process_group
 
 from llm_eval.llm import *
@@ -20,24 +22,11 @@ def test_llms(args, cfg, keywords):
     batch_size = cfg.model_params.get('batch_size', 10)
 
     llms = [
-        'tiiuae/falcon-7b-instruct'
-        'mistralai/Mistral-7B-Instruct-v0.1',
-        'lmsys/vicuna-7b-v1.5',
-        'lmsys/vicuna-7b-v1.5-16k',
-        'lmsys/vicuna-13b-v1.5',
-        'lmsys/vicuna-13b-v1.5-16k',
-    ]
-
-    llms = [
-        'chat-bison-001',
-        'gemini-pro',
-        'gpt-3.5-turbo',
-        'gpt-4',
-        #'meta-llama/Llama-2-7b-chat-hf',
-        #'mosaicml/mpt-7b-instruct',
-        #'mosaicml/mpt-7b-chat',
-        #'mosaicml/mpt-30b-chat',
-        #'mosaicml/mpt-30b-instruct',
+        #"mistralai/Mistral-7B-Instruct-v0.1",
+        #"mistralai/Mistral-7B-Instruct-v0.2",
+        'microsoft/Phi-3-mini-4k-instruct',
+        'microsoft/Phi-3-mini-128k-instruct',
+        'meta-llama/Meta-Llama-3-8B-Instruct',
     ]
 
     usr_messages = [
@@ -56,6 +45,8 @@ def test_llms(args, cfg, keywords):
         try:
 
             # create session and generate response
+            torch.cuda.empty_cache()
+            display.info('cuda empty cache')
             session = select_chat_model(cfg, llm)
             display.info(f'session type for {llm} is: {type(session)}')
 
@@ -90,12 +81,41 @@ def test_llms(args, cfg, keywords):
 
         # free memory (not doing so causes CUDA_OUT_OF_MEMORY
         if success:
+
             del session
-            ray.shutdown()
-            gc.collect()
-            torch.cuda.empty_cache()
-            destroy_model_parallel()
-            if torch.distributed.is_initialized():
+            try:
+                ray.shutdown()
+                display.info('ray shutdown')
+            except:
+                pass
+
+            try:
+                destroy_model_parallel()
+                display.info('destroy model parallel')
+            except:
+                pass
+
+            try:
                 destroy_process_group()
+                display.info('destroy process group')
+            except:
+                pass
+
+            try:
+                del session.model
+                display.info('deleted session.model')
+            except:
+                pass
+            gc.collect()
+            display.info('gc collect')
+            torch.cuda.empty_cache()
+            display.info('cuda empty cache')
+
+            try:
+                distributed.device_communicators.pynccl_utils.destroy_process_group()
+                display.info('vllm destroy process group')
+            except:
+                pass
+
 
 

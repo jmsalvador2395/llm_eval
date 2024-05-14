@@ -5,7 +5,6 @@ from .hf_generate_models import HFGenerateSession
 from .wizardcoder import WizardCoderSession
 from .salesforce import SalesforceSession
 from .vllm_models import VLlmSession
-from .palm_models import PalmSession
 from .gemini import GeminiSession
 
 from llm_eval.utils import (
@@ -26,8 +25,6 @@ def select_chat_model(cfg: dict, model_name: str) -> ChatSession:
 
     if model_name in get_gpt_models():
         return  OpenAISession(cfg, model_name)
-    elif model_name in get_palm_models():
-        return PalmSession(cfg, model_name)
     elif model_name in get_gemini_models():
         return GeminiSession(cfg, model_name)
     elif model_name in get_vllm_models():
