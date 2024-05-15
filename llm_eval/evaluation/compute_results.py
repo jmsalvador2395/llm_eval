@@ -35,17 +35,23 @@ def collect_scores(args, cfg, keywords):
     if args.procedure == 'unit_test':
         base_path = f'{files.project_root()}/data/unit_test/eval'
     elif args.procedure == 'exec_all':
-        base_path = f'{cfg.response_collection["save_dir"]}/{keywords["timestamp"]}'
+        base_path = f'{cfg.resp_coll["save_dir"]}/{keywords["timestamp"]}'
     elif args.procedure == 'evaluate':
-        base_path = f'{cfg.response_collection["save_dir"]}/{args.timestamp}'
+        base_path = f'{cfg.resp_coll["save_dir"]}/{args.timestamp}'
 
     # get file names in target path
     targets = []
     for path, subdirs, fnames in os.walk(base_path):
         for name in fnames:
-            if name.endswith('.json'):
+            if name.endswith('results.json'):
                 targets.append(os.path.join(path, name))
     targets = sorted(targets)
+
+    # extract model names from each target
+    model_names = [
+        re.match(f'{base_path}/(.*)/results.json', trgt).groups()[0]
+        for trgt in targets
+    ]
 
     metrics = cfg.eval.get('metrics', ['rouge'])
     if type(metrics) != list:
@@ -54,35 +60,21 @@ def collect_scores(args, cfg, keywords):
     elif metrics == []:
         display.error('Error in config: "eval -> metrics" should not be empty')
         raise ValueError('config -> eval -> metrics should not be empty')
-
-    # create headers for markdown table
-    out_table = '| Model | Dataset | Level | # Samples | # Samples Evaluated |'
-    if 'rouge' in metrics:
-        out_table += ' Rouge-1 | Rouge-2 | Rouge-L | Rouge-L Sum |'
-    if 'sem-f1' in metrics:
-        out_table += ' Sem-F1 (USE) | Sem-F1 (Distil) | Sem-F1 (RoBERTa) |'
-    if 'bert_score' in metrics:
-        out_table += ' BERTscore |'
-    if 'fans' in metrics:
-        out_table += ' FaNS | # FaNS Samples |'
-    out_table += '\n' + '| - '*(out_table.count('|')-1) + '|\n'
-
-    breakpoint()
             
     # get set of dataset names
-    ds_names = set(cfg.response_collection['datasets'].keys())
+    ds_names = set(cfg.datasets.keys())
+    breakpoint()
 
     all_scores = []
     start = time.time()
 
-    for trgt in tqdm(targets, total=len(targets)):
+    for trgt, model_name in tqdm(zip(targets, model_names), total=len(targets)):
         sample_start = time.time()
         
-        display.info(f'computing metrics for {trgt[len(base_path):]}')
+        display.info(f'computing metrics for {model_name}')
         ds = Dataset.from_json(
             trgt,
-            cache_dir=cfg.response_collection['ds_cache'],
-            keep_in_memory=True,
+            cache_dir=cfg.resp_coll['ds_cache'],
         )
 
         # get dataset name for given target
@@ -91,13 +83,13 @@ def collect_scores(args, cfg, keywords):
 
         # remove empty samples
         before_prune = len(ds)
-        ds = ds.filter(lambda x: x['response'] is not None, keep_in_memory=True)
-        ds = ds.filter(lambda x: x['response'].strip() != '', keep_in_memory=True)
+        ds = ds.filter(lambda x: x['response'] is not None)
+        ds = ds.filter(lambda x: x['response'].strip() != '')
         after_prune = len(ds)
         #print(f'size before filter: {before_prune}\nsize after filter: {after_prune}')
 
         # compute metrics
-        ref_cols = cfg.response_collection['datasets'][trgt_ds]['ref_col_names']
+        ref_cols = cfg.datasets[trgt_ds]['references']
         
         # extract meta-data from file name
         data_info = trgt[len(base_path)+1:].split('/')
@@ -139,15 +131,8 @@ def collect_scores(args, cfg, keywords):
         # add data for output dataset
         all_scores.append(trgt_data)
 
-        # add row to output markdown table
-        row_str = [f'{val:.02f}' if is_float(val) else str(val) for val in trgt_data.values()]
-        row_str = '| ' + ' | '.join(row_str) + ' |\n'
-        out_table += row_str
-
         # write out data
-        with open(f'{base_path}/results_table.md', 'w') as f:
-            f.write(out_table)
-        Dataset.from_list(all_scores).to_json(f'{base_path}/results.json')
+        Dataset.from_list(all_scores).to_json(f'{base_path}/scores.json')
 
         end = time.time()
         print('=================')

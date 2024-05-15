@@ -81,6 +81,15 @@ def test_llms(args, cfg, keywords):
 
         # free memory (not doing so causes CUDA_OUT_OF_MEMORY
         if success:
+            try:
+                del session.model
+                display.info('deleted session.model')
+            except:
+                pass
+            gc.collect()
+            display.info('gc collect')
+            torch.cuda.empty_cache()
+            display.info('cuda empty cache')
 
             del session
             try:
@@ -100,16 +109,6 @@ def test_llms(args, cfg, keywords):
                 display.info('destroy process group')
             except:
                 pass
-
-            try:
-                del session.model
-                display.info('deleted session.model')
-            except:
-                pass
-            gc.collect()
-            display.info('gc collect')
-            torch.cuda.empty_cache()
-            display.info('cuda empty cache')
 
             try:
                 distributed.device_communicators.pynccl_utils.destroy_process_group()

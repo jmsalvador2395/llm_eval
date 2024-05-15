@@ -42,6 +42,8 @@ resp_coll:
     - microsoft/Phi-3-mini-4k-instruct
     - microsoft/Phi-3-mini-128k-instruct
     - meta-llama/Meta-Llama-3-8B-Instruct
+    - meta-llama/Llama-2-7b-chat-hf
+    - meta-llama/Llama-2-13b-chat-hf
 #    - "gemini-pro"
 #    - "gpt-3.5-turbo"
 #    - "gpt-4"
@@ -55,8 +57,6 @@ resp_coll:
 #    - "mosaicml/mpt-30b-instruct"
 #    - "mosaicml/mpt-7b-chat"
 #    - "mosaicml/mpt-30b-chat"
-#    - "meta-llama/Llama-2-7b-chat-hf"
-#    - "meta-llama/Llama-2-13b-chat-hf"
 #    #- "tiiuae/falcon-7b-instruct"
 #    #- "chat-bison-001"
 #    #- "meta-llama/Llama-2-70b-chat-hf"
@@ -74,8 +74,8 @@ model_params:
   #model_cache: "/data/shared/llm_cache"
   #model_cache: "/data/john/cache"
   use_sampling_params: False
-  #max_length: 2600
-  max_length: 2048
+  max_length: 4096
+  #max_length: 2048
   num_output_tokens: 512
   temperature: 0.8
   batch_size: 2
