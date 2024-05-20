@@ -5,6 +5,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
 from typing import List
 import gc
+import torch
+from tqdm import tqdm
 
 
 def compute_cosine_similarity(pred_embeds, ref_embeds):
@@ -26,12 +28,15 @@ def use_similarity(predictions: List[List[str]], references: List[List[str]]):
     module_url = "https://tfhub.dev/google/universal-sentence-encoder/4"
     model = hub.load(module_url)
     out_scores = [0]*len(predictions)
-    for idx, (preds, refs) in enumerate(zip(predictions, references)):
+    for idx, (preds, refs) in tqdm(
+            enumerate(zip(predictions, references)), 
+            total=len(predictions),
+            desc='computing semf1-use similarity'):
         pred_embeddings = model(preds)
         ref_embeddings = model(refs)
         out_scores[idx] = compute_cosine_similarity(pred_embeddings, ref_embeddings)
 
-    del model
+    #del model
     gc.collect()
 
     return out_scores
@@ -52,12 +57,15 @@ def sbert_similarity(predictions: List[List[str]], references: List[List[str]], 
 
     model = SentenceTransformer(model_name)
     out_scores = [0] * len(predictions)
-    for idx, (preds, refs) in enumerate(zip(predictions, references)):
+    for idx, (preds, refs) in tqdm(
+            enumerate(zip(predictions, references)),
+            total=len(predictions),
+            desc=f'computing semf1-{model_name} similarity'):
         pred_embeddings = model.encode(preds)
         ref_embeddings = model.encode(refs)
         out_scores[idx] = compute_cosine_similarity(pred_embeddings, ref_embeddings)
 
-    del model
+    #del model
     gc.collect()
 
     return out_scores
