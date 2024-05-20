@@ -43,6 +43,8 @@ class PromptGenerator:
             'dataset': [],
             'system': [],
             'prompt': [],
+            'sys_text_id': [],
+            'prompt_text_id': [],
         }
 
         for ds_name, ds in data.items():
@@ -83,6 +85,11 @@ class PromptGenerator:
                         strings.replace_slots(text, sample_tmp)
                         for text in templates
                     ]
+
+                    sys_text_pos, prompt_pos = zip(*list(product(
+                        range(len(sys_text)), range(len(prompts))
+                    )))
+
                     sys_text, prompts = zip(
                         *list(product(sys_text, prompts))
                     )
@@ -92,5 +99,7 @@ class PromptGenerator:
                     out_data['dataset'] += [ds_name]*len(prompts)
                     out_data['system'] += list(sys_text)
                     out_data['prompt'] += list(prompts)
+                    out_data['sys_text_id'] += list(sys_text_pos)
+                    out_data['prompt_text_id'] += list(prompt_pos)
 
         return Dataset.from_dict(out_data)
