@@ -71,6 +71,31 @@ def parse():
         '--from_ckpt', default=None, type=str,
         help='use this to provide a di',
     )
+ 
+    # add subparser for infilling procedure
+    parser_rc = subparser.add_parser('infilling')
+    parser_rc.add_argument(
+        '-c', '--cfg', help='config path',
+        default=f'{files.project_root()}/cfg/config.yaml',
+    )
+    parser_rc.add_argument(
+        '-d', '--debug', action='store_true', default=False,
+        help=(
+            'sets the program to debug mode. moves outputs to '
+            'special locations'),
+    )
+    parser_rc.add_argument(
+        '-l', '--limit', type=int,
+        help='sets the number of samples to work on', default=None,
+    )
+    parser_rc.add_argument(
+        '--from_ckpt', default=None, type=str,
+        help='use this to provide a di',
+    )
+    parser_rc.add_argument(
+        '--model', default=None, type=str, required=True,
+        help='the model to collect data on',
+    )
 
     # parser for the evaluation procedure
     parser_eval = subparser.add_parser('evaluate')
