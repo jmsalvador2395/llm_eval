@@ -172,7 +172,7 @@ def collect_scores(args, cfg, keywords):
             if 'rouge' in metrics:
                 if key not in progress[model_name]:
                     display.info(f'computing rouge for {model_name}-{ds_name}')
-                    rouge_scores = compute_rouge(trgt_ds, references)
+                    rouge_scores = compute_rouge(out_ds, ref_cols)
                     progress[model_name][key] = rouge_scores
                     with open(prog_path, 'w') as f:
                         f.write(json.dumps(progress))
@@ -270,7 +270,7 @@ def replace_nones(responses: List[str]):
 
 def compute_rouge(
             ds: Dataset, 
-            references: List[List[str]]):
+            ref_cols: List[str]):
     """ 
     computes individual rouge scores for the given dataset and 
     references
@@ -280,10 +280,10 @@ def compute_rouge(
 
     :param references: the list o
     """
-
     rouge_preds = ds['response']
 
     #rouge_refs = list(zip(*[ds[rc] for rc in ref_cols]))
+    references = list(zip(*[ds[rc] for rc in ref_cols]))
     rouge_scorer = evaluate.load('rouge')
 
     #rouge_preds = [doc if doc is not None else '' for doc in rouge_preds]

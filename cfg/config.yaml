@@ -64,8 +64,8 @@ resp_coll:
 eval:
   metrics:
     - "rouge"
-    - "semf1"
-    - "bertscore"
+    #- "semf1"
+    #- "bertscore"
     #- "fans"
   save_dir: "{{project_root}}/data/results/"
 
