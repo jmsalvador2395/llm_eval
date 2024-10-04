@@ -24,6 +24,37 @@ datasets:
       - "Annotator1"
       - "Annotator2"
       - "Annotator3"
+  stanfordnlp/sst2:
+    text_column: "sentence"
+    split: "test"
+  abisee/cnn_dailymail:
+    text_column: "article"
+    split: "test"
+    args:
+      - "1.0.0"
+    
+  acl_abstracts:
+    type: "json"
+    path: "{{project_root}}/data/ACL_titles_abstracts_dataset/acl_abstracts.json"
+    text_column: "text"
+
+infill:
+  ds_cache: "{{project_root}}/data/cache"
+  save_dir: "{{project_root}}/data/results"
+  checkpoint_interval: 50
+  prompt_templates:
+  target_data:
+    - "stanfordnlp/sst2"
+    - "abisee/cnn_dailymail"
+  prompt_templates:
+    sys: "{{project_root}}/cfg/prompts/fitb_system.yaml"
+    fitb_l0: "{{project_root}}/cfg/prompts/fitb_l0.yaml" 
+    fitb_l1: "{{project_root}}/cfg/prompts/fitb_l1.yaml" 
+    fitb_l2: "{{project_root}}/cfg/prompts/fitb_l2.yaml" 
+    fitb_l3: "{{project_root}}/cfg/prompts/fitb_l3.yaml" 
+    fitb_l4: "{{project_root}}/cfg/prompts/fitb_l4.yaml" 
+  max_blank_sents: 5
+  max_blank_words: 1
 
 resp_coll:
   ds_cache: "{{project_root}}/data/cache"

@@ -1,0 +1,17 @@
+- |
+  {{source_text}}
+
+  Fill in the blank.
+- |
+  {{source_text}}
+
+  The blank denoted by " ______ " represents {{n}} {{unit}}.
+  With this in mind, fill in the blank.
+- |
+  {{source_text}}
+
+  Fill in the blank with {{n}} {{unit}}.
+- |
+  {{source_text}}
+
+  Guess the missing {{n}} {{unit}}.
