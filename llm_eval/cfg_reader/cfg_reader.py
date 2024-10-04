@@ -36,6 +36,7 @@ def load(path_str: str, debug=False):
         'eval': {},
         'unit_test': {},
         'model_params': {},
+        'infill': {},
     }
     categories = base_cfg.keys()
 

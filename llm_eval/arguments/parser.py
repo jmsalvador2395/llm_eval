@@ -73,7 +73,7 @@ def parse():
     )
  
     # add subparser for infilling procedure
-    parser_rc = subparser.add_parser('infilling')
+    parser_rc = subparser.add_parser('infill')
     parser_rc.add_argument(
         '-c', '--cfg', help='config path',
         default=f'{files.project_root()}/cfg/config.yaml',

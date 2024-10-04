@@ -14,12 +14,14 @@ import json
 import datasets
 import time
 import numpy as np
+import random
 from numpy.lib.stride_tricks import sliding_window_view
 from tqdm import tqdm
 from datasets import Dataset
 #from vllm.model_executor.parallel_utils.parallel_state import ( destroy_model_parallel)
 from vllm.distributed import destroy_model_parallel
 from torch.distributed import destroy_process_group
+from nltk import sent_tokenize
 
 # local imports
 from llm_eval.utils import (
@@ -29,7 +31,7 @@ from llm_eval.utils import (
 from llm_eval.llm import *
 from llm_eval.prompt_generator import TELeR, PromptGenerator
 
-def do_infilling(args, cfg, keywords):
+def infilling(args, cfg, keywords):
 
     ######### unpack vars from cfg ##########
 
@@ -58,7 +60,7 @@ def do_infilling(args, cfg, keywords):
     else:
         # initilaize save directory and progress file
         save_dir = (
-            f'{cfg.resp_coll["save_dir"]}/'
+            f'{cfg.infill["save_dir"]}/'
             f'{keywords["timestamp"]}'
         )
         prog_path = f'{save_dir}/progress.json'
@@ -79,29 +81,116 @@ def do_infilling(args, cfg, keywords):
     #########################################
 
     # load in datasets
-    ds_dict = {}
-    try:
-        d_sets = cfg.datasets
-        for ds_name, d_set in d_sets.items():
-            ds = datasets.load_dataset(
-                d_set['type'],
-                data_files=d_set['path'],
-                cache_dir=ds_cache,
-            )
-            ds_dict[ds_name] = ds['train']
-    except Exception as e:
-        display.error(
-            f'required config parameters not provided for resp_coll -> '
-            f'datasets. refer to '
-            f'\'{files.project_root()}/cfg/template.yaml\' for examples'
+    ds_list = []
+    ds_names = cfg.infill['target_data']
+    for name in ds_names:
+        name_params = cfg.datasets[name]
+        text_col = name_params['text_column']
+        split = name_params['split']
+        name_args = name_params.get('args', [])
+
+        temp_ds = datasets.load_dataset(
+            name,
+            *name_args,
+            cache_dir=cfg.infill['ds_cache']
         )
-        #traceback.print_exception(*sys.exc_info())
-        print(e)
-        os._exit(1)
+        temp_ds = temp_ds[split]
+        temp_ds = temp_ds.rename_column(text_col, 'source')
+        temp_ds = temp_ds.select_columns('source')
+        ids = [f'ds="{name}",idx={i}' for i in range(len(temp_ds))]
+        name_list = [name]*len(temp_ds)
+        idx = list(range(len(temp_ds)))
+        #temp_ds = temp_ds.add_column('id', ids)
+        temp_ds = temp_ds.add_column('idx', idx)
+        temp_ds = temp_ds.add_column('ds', name_list)
 
-    prmpt_gen = PromptGenerator(cfg)
-    prompt_data = prmpt_gen.prepare_data(ds_dict)
+        ds_list.append(temp_ds)
+    ds = datasets.concatenate_datasets(ds_list)
 
+    # create dataset samples
+    def map_fn(batch, **fn_kwargs):
+        N = len(batch['source'])
+        samples = [
+            {'source': batch['source'][n], 
+                'idx': batch['idx'][n],
+                'ds': batch['ds'][n]}
+            for n in range(N)
+        ]
+        out_batch = {
+            'source': [],
+            'idx': [],
+            'ds': [],
+            'problem': [],
+            'answer': [],
+            'unit': [],
+            'n': [],
+            'unit_idx': []
+        }
+
+        for sample in samples:
+
+            #id_base = sample['id']
+
+            # read in limits
+            max_sents = fn_kwargs['max_sents']
+            max_words = fn_kwargs['max_words']
+
+            # split into words and sentences
+            words = sample['source'].split()
+            sents = sent_tokenize(sample['source'])
+
+            # compute minimums then set to 0 if minimum is negative
+            max_sents = max(min(max_sents, len(sents)-2), 0)
+            max_words = max(min(max_words, len(words)-2), 0)
+            blank = ' ______ '
+            count = 0
+            for n_words in range(1, max_words+1):
+                for start_idx in range(1, len(words)-n_words):
+                    count += 1
+                    out_batch['answer'].append(' '.join(
+                        words[start_idx:start_idx+n_words]
+                    ))
+                    out_batch['problem'].append(
+                        ' '.join(words[:start_idx])
+                        + blank
+                        + ' '.join(words[start_idx+n_words:])
+                    )
+                    out_batch['unit'].append('word(s)')
+                    out_batch['n'].append(n_words)
+                    out_batch['unit_idx'].append(start_idx)
+            
+            for n_sents in range(1, max_sents+1):
+                for start_idx in range(1, len(sents)-n_sents):
+                    count += 1
+                    out_batch['answer'].append(' '.join(
+                        sents[start_idx:start_idx+n_sents]
+                    ))
+                    out_batch['problem'].append(
+                        ' '.join(sents[:start_idx])
+                        + blank
+                        + ' '.join(sents[start_idx+n_words:])
+                    )
+                    out_batch['unit'].append('sentence(s)')
+                    out_batch['n'].append(n_sents)
+                    out_batch['unit_idx'].append(start_idx)
+            out_batch['source'] += [sample['source']]*count
+            out_batch['ds'] += [sample['ds']]*count
+            out_batch['idx'] += [sample['idx']]*count
+
+        return out_batch
+    
+    ds = ds.map(
+        map_fn,
+        batched=True,
+        batch_size=32,
+        fn_kwargs={
+            'max_sents': cfg.infill['max_blank_sents'],
+            'max_words': cfg.infill['max_blank_words']},
+    )
+
+    gen = PromptGenerator(cfg, args.procedure)
+    ds = gen.prepare_infill_data(ds)
+    
     # loop over models and generate data
     start_time = time.time()
     num_generated = 0
@@ -125,7 +214,7 @@ def do_infilling(args, cfg, keywords):
         responses = []
 
     # check if generation is already completed
-    if len(responses) >= len(prompt_data):
+    if len(responses) >= len(ds):
         display.info(
             'checkpoint data contains all responses. '
             'checking if data exists ...'
@@ -139,7 +228,7 @@ def do_infilling(args, cfg, keywords):
         else:
             # save ds to output directory
             display.info(f'data not found. saving to {out_pth}')
-            out_ds = prompt_data.add_column(
+            out_ds = ds.add_column(
                 'response', 
                 responses
             )
@@ -159,7 +248,7 @@ def do_infilling(args, cfg, keywords):
 
     milestones = np.arange(
         start_idx, 
-        len(prompt_data), 
+        len(ds), 
         step_size,
     )
 
@@ -168,8 +257,8 @@ def do_infilling(args, cfg, keywords):
     for start in tqdm(milestones, total=len(milestones)):
         stop = start+step_size
         responses += session.get_response(
-            prompt_data[start:stop]['prompt'], 
-            prompt_data[start:stop]['system'],
+            ds[start:stop]['prompt_text'], 
+            ds[start:stop]['sys_text'],
             prog_bar=False,
         )
         prog[model] = len(responses)
@@ -183,7 +272,7 @@ def do_infilling(args, cfg, keywords):
 
 
     # saves ds to output directory
-    out_ds = prompt_data.add_column('response', responses)
+    out_ds = ds.add_column('response', responses)
     files.create_path(files.dirname(out_pth))
     out_ds.to_json(out_pth)
 

@@ -34,7 +34,8 @@ def collect_scores(args, cfg, keywords):
     if args.procedure == 'unit_test':
         base_path = f'{files.project_root()}/data/unit_test/eval'
     elif args.procedure == 'exec_all':
-        base_path = f'{cfg.resp_coll["save_dir"]}/{keywords["timestamp"]}'
+        base_path = \
+            f'{cfg.resp_coll["save_dir"]}/{keywords["timestamp"]}'
     elif args.procedure == 'evaluate':
         base_path = f'{cfg.resp_coll["save_dir"]}/{args.timestamp}'
 
@@ -66,11 +67,15 @@ def collect_scores(args, cfg, keywords):
 
     metrics = cfg.eval.get('metrics', ['rouge'])
     if type(metrics) != list:
-        display.error('Error in config: "eval -> metrics" should be a list')
-        raise ValueError('config -> eval -> metrics should be a list')
+        display.error(
+            'Error in config: "eval -> metrics" should be a list')
+        raise ValueError(
+            'config -> eval -> metrics should be a list')
     elif metrics == []:
-        display.error('Error in config: "eval -> metrics" should not be empty')
-        raise ValueError('config -> eval -> metrics should not be empty')
+        display.error(
+            'Error in config: "eval -> metrics" should not be empty')
+        raise ValueError(
+            'config -> eval -> metrics should not be empty')
             
     # get set of dataset names
     ds_names = sorted(set(cfg.datasets.keys()))
@@ -155,13 +160,6 @@ def collect_scores(args, cfg, keywords):
             ref_indices = trgt_ds['id']
 
             unique_refs = {}
-            """
-            unique_refs = list(zip(*(
-                ref_data[ds_name][ref_col]
-                for ref_col in ref_cols
-            )))
-            references = [list(unique_refs[ref_id]) for ref_id in ref_indices]
-            """
             unique_references = ref_data[ds_name].select_columns(
                 ref_cols
             )

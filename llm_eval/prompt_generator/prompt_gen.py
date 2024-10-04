@@ -2,6 +2,7 @@ import os
 import traceback
 import copy
 import random
+import itertools
 from datasets import Dataset
 from itertools import product
 from llm_eval.utils import (
@@ -11,10 +12,16 @@ from llm_eval.utils import (
 )
 
 class PromptGenerator:
-    def __init__(self, cfg):
+    def __init__(self, cfg, procedure='response_collection'):
 
         self.cfg = cfg
-        prompt_groups = cfg.resp_coll.get('prompt_templates')
+        if procedure == 'response_collection':
+            prompt_groups = cfg.resp_coll.get('prompt_templates')
+        elif procedure == 'infill':
+            prompt_groups = cfg.infill.get('prompt_templates')
+        else:
+            raise Exception('Invalid procedure running?')
+
         if prompt_groups is None:
             display.error(
                 'prompt templates and paths not specified '
@@ -31,8 +38,66 @@ class PromptGenerator:
             display.error(f'error reading from path')
             display.error(str(e))
             raise ValueError()
-        self.sys_text = templates.pop('sys')
+        if 'sys' in templates:
+            self.sys_text = templates.pop('sys')
+        else:
+            display.error('no "sys" config provided')
+            raise KeyError('no "sys" config provided')
+            
         self.templates = templates
+    
+    def prepare_infill_data(self, ds):
+
+        # create combinations
+        tmplt_names = []
+        tmplt_idx = []
+        prompts = []
+        for key, val in self.templates.items():
+            prompts += val
+            tmplt_names += [key]*len(val)
+            tmplt_idx += list(range(len(val)))
+        global_tmplt_idx = list(range(len(prompts)))
+        sys_idx = list(range(len(self.sys_text)))
+        combos = list(itertools.product(sys_idx, global_tmplt_idx))
+
+        prompt_data = [
+            {
+                'tmplt_name': tmplt_names[tmplt_id],
+                'tmplt_id': tmplt_idx[tmplt_id],
+                'sys_id': sys_id,
+                'sys_text': self.sys_text[sys_id],
+                'prompt_text': prompts[tmplt_id],
+            }
+            for sys_id, tmplt_id in combos
+        ]
+
+        def map_fn(batch, **fn_kwargs):
+            prompts = fn_kwargs['prompts']
+            keys = list(dict(batch).keys())
+            prompt_keys = list(prompts[0].keys())
+
+            out_batch = {key: [] for key in keys+prompt_keys}
+            N = len(batch[keys[0]])
+            for prompt in prompts:
+                for n in range(N):
+                    for key in keys:
+                        out_batch[key].append(batch[key][n])
+                    for key in prompt_keys:
+                        out_batch[key].append(prompt[key])
+
+            return batch
+        
+        ds = ds.map(
+            map_fn,
+            fn_kwargs={
+                'prompts': prompt_data},
+            batched=True,
+            batch_size=16,
+            num_proc=4,
+        )
+
+        return ds
+
 
     def prepare_data(self, data):
         cfg = self.cfg
