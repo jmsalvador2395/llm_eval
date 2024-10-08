@@ -8,7 +8,7 @@ jupyterlab
 matplotlib
 nltk
 numpy
-openai==1.2.3
+openai
 pandas
 rouge-score==0.1.2
 scikit-learn
@@ -22,7 +22,8 @@ tokenizers
 torch
 tqdm
 transformers
-vllm==0.4.2
+vllm
+#vllm==0.4.2
 #vllm==0.4.0.post1
 jsonlines
 fuzzywuzzy

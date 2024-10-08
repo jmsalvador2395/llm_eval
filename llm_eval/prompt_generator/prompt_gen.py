@@ -73,19 +73,31 @@ class PromptGenerator:
 
         def map_fn(batch, **fn_kwargs):
             prompts = fn_kwargs['prompts']
-            keys = list(dict(batch).keys())
+            sample_keys = list(dict(batch).keys())
             prompt_keys = list(prompts[0].keys())
+            all_keys = sample_keys + prompt_keys
 
-            out_batch = {key: [] for key in keys+prompt_keys}
-            N = len(batch[keys[0]])
+            out_batch = {key: [] for key in sample_keys+prompt_keys}
+            N = len(batch[sample_keys[0]])
             for prompt in prompts:
                 for n in range(N):
-                    for key in keys:
-                        out_batch[key].append(batch[key][n])
-                    for key in prompt_keys:
-                        out_batch[key].append(prompt[key])
+                    sample = (
+                        prompt 
+                        | {batch[key][n] for key in sample_keys}
+                    )
+                    sample['prompt_text'] = strings.replace_slots(
+                        sample['prompt_text'],
+                        sample
+                    )
+                    sample['sys_text'] = strings.replace_slots(
+                        sample['sys_text'],
+                        sample
+                    )
+                    for key in sample.keys():
+                        out_batch[key].append(sample[key])
+                    breakpoint()
 
-            return batch
+            return out_batch
         
         ds = ds.map(
             map_fn,

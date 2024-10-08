@@ -110,7 +110,7 @@ model_params:
   num_output_tokens: 512
   temperature: 0.8
   batch_size: 2
-  num_devices: 4
+  num_devices: 1
   #dtype: "float16"
   dtype: "auto"
 

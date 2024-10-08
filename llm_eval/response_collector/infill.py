@@ -188,8 +188,10 @@ def infilling(args, cfg, keywords):
             'max_words': cfg.infill['max_blank_words']},
     )
 
+    breakpoint()
     gen = PromptGenerator(cfg, args.procedure)
     ds = gen.prepare_infill_data(ds)
+    breakpoint()
     
     # loop over models and generate data
     start_time = time.time()
