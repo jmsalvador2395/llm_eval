@@ -83,7 +83,7 @@ class PromptGenerator:
                 for n in range(N):
                     sample = (
                         prompt 
-                        | {batch[key][n] for key in sample_keys}
+                        | {key:batch[key][n] for key in sample_keys}
                     )
                     sample['prompt_text'] = strings.replace_slots(
                         sample['prompt_text'],
@@ -95,7 +95,6 @@ class PromptGenerator:
                     )
                     for key in sample.keys():
                         out_batch[key].append(sample[key])
-                    breakpoint()
 
             return out_batch
         
@@ -105,7 +104,7 @@ class PromptGenerator:
                 'prompts': prompt_data},
             batched=True,
             batch_size=16,
-            num_proc=4,
+            num_proc=8,
         )
 
         return ds

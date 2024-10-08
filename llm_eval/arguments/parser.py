@@ -90,7 +90,8 @@ def parse():
     )
     parser_rc.add_argument(
         '--from_ckpt', default=None, type=str,
-        help='use this to provide a di',
+        help=('if continuing from a checkpoint, provide the directory '
+              'with this flag'),
     )
     parser_rc.add_argument(
         '--model', default=None, type=str, required=True,

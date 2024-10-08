@@ -15,6 +15,8 @@ import datasets
 import time
 import numpy as np
 import random
+import sqlite3
+from functools import partial
 from numpy.lib.stride_tricks import sliding_window_view
 from tqdm import tqdm
 from datasets import Dataset
@@ -22,6 +24,7 @@ from datasets import Dataset
 from vllm.distributed import destroy_model_parallel
 from torch.distributed import destroy_process_group
 from nltk import sent_tokenize
+from multiprocessing import Pool, current_process
 
 # local imports
 from llm_eval.utils import (
@@ -31,6 +34,15 @@ from llm_eval.utils import (
 from llm_eval.llm import *
 from llm_eval.prompt_generator import TELeR, PromptGenerator
 
+def create_problems(ds_names, row_ids, texts, **kwargs):
+    db_file = kwargs['db_file']
+    con = sqlite3.connect(db_file)
+    cur = con.cursor()
+
+    for ds_name, row_id, text in zip(ds_names, row_ids, texts):
+        pass
+
+
 def infilling(args, cfg, keywords):
 
     ######### unpack vars from cfg ##########
@@ -39,51 +51,33 @@ def infilling(args, cfg, keywords):
     step_size = cfg.infill['checkpoint_interval']
     model = args.model
 
-    if args.from_ckpt:
-        # try to load checkpoint file
-        save_dir = files.full_path(args.from_ckpt)
-        prog_path = f'{save_dir}/progress.json'
-#        ckpt_path = f'{save_dir}/checkpoint.json'
-        try:
-#            with open(ckpt_path) as f:
-#                ckpt = json.loads(f.read())
-            with open(prog_path) as f:
-                prog = json.loads(f.read())
-        except Exception as e:
-            display.error(
-                f'Argument `--from_ckpt`: '
-                f'checkpoint directory `{save_dir}` does not contain '
-                f'any checkpointing info.'
-            )
-            print(e)
-            os._exit(1)
-    else:
-        # initilaize save directory and progress file
-        save_dir = (
-            f'{cfg.infill["save_dir"]}/'
-            f'{keywords["timestamp"]}'
-        )
-        prog_path = f'{save_dir}/progress.json'
-#        ckpt_path = f'{save_dir}/checkpoint.json'
-#        ckpt = {}
-#        files.create_path(save_dir)
-#        with open(ckpt_path, 'w') as f:
-#            f.write(json.dumps(ckpt))
-        prog = {}
-        files.create_path(save_dir)
-        with open(prog_path, 'w') as f:
-            f.write(json.dumps(prog))
-
-    ######### unpack vars from args ######### 
-    
     limit = args.limit
 
-    #########################################
+    if args.from_ckpt:
+        save_loc = args.from_ckpt
+    else:
+        # create database file
+        save_loc = f'{cfg.infill["save_dir"]}/infill/{keywords["timestamp"]}'
+        files.create_path(save_loc)
+    db_file = f'{save_loc}/data.db'
+    db_is_new = not files.path_exists(db_file)
+
+    con = sqlite3.connect(db_file)
+    cur = con.cursor()
+    res = cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS source_data (
+            dataset TEXT,
+            row_id BIGINT,
+            text TEXT,
+            PRIMARY KEY (dataset, row_id)
+        );
+        """
+    )
 
     # load in datasets
-    ds_list = []
     ds_names = cfg.infill['target_data']
-    for name in ds_names:
+    for name in tqdm(ds_names, desc='populating source document table'):
         name_params = cfg.datasets[name]
         text_col = name_params['text_column']
         split = name_params['split']
@@ -95,17 +89,49 @@ def infilling(args, cfg, keywords):
             cache_dir=cfg.infill['ds_cache']
         )
         temp_ds = temp_ds[split]
-        temp_ds = temp_ds.rename_column(text_col, 'source')
-        temp_ds = temp_ds.select_columns('source')
-        ids = [f'ds="{name}",idx={i}' for i in range(len(temp_ds))]
-        name_list = [name]*len(temp_ds)
-        idx = list(range(len(temp_ds)))
-        #temp_ds = temp_ds.add_column('id', ids)
-        temp_ds = temp_ds.add_column('idx', idx)
-        temp_ds = temp_ds.add_column('ds', name_list)
+        temp_ds = temp_ds.rename_column(text_col, 'text')
+        temp_ds = temp_ds.select_columns('text')
 
-        ds_list.append(temp_ds)
-    ds = datasets.concatenate_datasets(ds_list)
+        N = len(temp_ds)
+        cur.executemany(
+            "INSERT OR IGNORE INTO source_data VALUES(?, ?, ?)",
+            zip([name]*N, range(N), temp_ds['text'])
+        )
+        con.commit()
+
+    text_data = list(cur.execute(
+        'SELECT dataset, row_id, text FROM source_data'
+    ))
+    N = len(text_data)
+    num_proc = cfg.infill['num_proc']
+    chunk_size = cfg.infill['chunk_size']
+
+    with Pool(num_proc) as p:
+        p.starmap(
+            func=partial(create_problems, **{'db_file': db_file}), 
+            iterable=text_data, 
+            chunksize=chunk_size,
+        )
+
+    breakpoint()
+
+    res = cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS fitb_problems (
+            dataset TEXT,
+            row_id BIGINT,
+            problem TEXT,
+            answer TEXT,
+            unit INT,
+            n INT,
+            unit_idx INT,
+            PRIMARY KEY (dataset, row_id, unit, n, unit_idx)
+            FOREIGN KEY (dataset, row_id) REFERENCES source_data
+        );
+        """
+    )
+    con.close()
+
 
     # create dataset samples
     def map_fn(batch, **fn_kwargs):
@@ -188,7 +214,6 @@ def infilling(args, cfg, keywords):
             'max_words': cfg.infill['max_blank_words']},
     )
 
-    breakpoint()
     gen = PromptGenerator(cfg, args.procedure)
     ds = gen.prepare_infill_data(ds)
     breakpoint()

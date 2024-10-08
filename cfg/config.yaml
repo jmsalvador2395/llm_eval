@@ -46,6 +46,8 @@ infill:
   target_data:
     - "stanfordnlp/sst2"
     - "abisee/cnn_dailymail"
+  num_proc: 4
+  chunk_size: 32
   prompt_templates:
     sys: "{{project_root}}/cfg/prompts/fitb_system.yaml"
     fitb_l0: "{{project_root}}/cfg/prompts/fitb_l0.yaml" 
