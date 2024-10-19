@@ -1,5 +1,6 @@
 # external imports
 import os
+import unittest
 
 # local imports
 from llm_eval import (
@@ -34,7 +35,7 @@ def main():
         case 'evaluate':
             evaluation.collect_scores(args, cfg, keywords)
         case 'unit_test':
-            unit_testing.unit_test(args, cfg, keywords)
+            unit_testing.run_tests(args, cfg, keywords)
         case 'infill':
             response_collector.infilling(args, cfg, keywords)
         case _:

@@ -1,41 +1,13 @@
-from .test_groups import (
-    test_llms,
-    test_teler,
-    test_eval,
-)
+from llm_eval.utils import files
 
-from llm_eval.utils import (
-    strings,
-    display,
-    validate,
-)
+import unittest
 
-def unit_test(args, cfg, keywords):
+def run_tests(args, cfg, keywords):
 
-    test_cases = cfg.unit_test.get('cases', [])
+    suite = unittest.defaultTestLoader.discover(
+        f'{files.project_root()}/llm_eval/unit_testing/test_groups',
+        top_level_dir=files.project_root(),
+    )
 
-    display.info(f'verbose: {args.verbose}')
-
-    # start routine
-    display.title('BEGIN UNIT TESTING')
-
-    """ unit testing starts """
-
-    if 'llm-responses' in test_cases:
-        display.title('Testing LLM Interface')
-        test_llms(args, cfg, keywords)
-        display.title('Done')
-
-    if 'teler' in test_cases:
-        display.title('Testing TELeR Interface')
-        test_teler(args, cfg, keywords)
-        display.title('Done')
-
-    if 'eval' in test_cases:
-        display.title('Testing Evaluation Interface')
-        test_eval(args, cfg, keywords)
-
-    """ unit testing ends """
-
-    # exit routine
-    display.title('END UNIT TESTING')
+    runner = unittest.TextTestRunner(verbosity=2)
+    runner.run(suite)

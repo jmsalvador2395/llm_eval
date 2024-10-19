@@ -2,6 +2,7 @@
 from datasets import Dataset
 import traceback
 import sys
+import unittest
 
 # local imports
 from llm_eval.prompt_generator import TELeR
@@ -28,4 +29,3 @@ def test_teler(args, cfg, keywords):
             traceback.print_exception(*sys.exc_info())
 
     display.done()
-

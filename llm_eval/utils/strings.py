@@ -15,9 +15,7 @@ def now() -> str:
 	return datetime.now().strftime('%Y%m%d-%H%M%S')
 
 def clean_multiline(text: str) -> str:
-	"""
-	removes unwanted tabs and returns from a multiline string
-	"""
+	"""removes unwanted tabs and returns from a multiline string"""
 	text = re.sub('\n *', '\n', text)
 	text = re.sub('\n\t*', '\n', text)
 	return text.strip('\n')
@@ -36,44 +34,31 @@ def remove_tilde(text: str) -> str:
     return text.split('```')[1] 
 
 def green(msg: str):
-    """
-    returns a given string in green text
-    """
+    """returns a given string in green text"""
     return Fore.GREEN + msg + Style.RESET_ALL
 
 def red(msg: str):
-    """
-    returns a given string in red text
-    """
+    """returns a given string in red text"""
     return Fore.RED + msg + Style.RESET_ALL
 
 def yellow(msg: str):
-    """
-    returns a given string in yellow text
-    """
+    """returns a given string in yellow text"""
     return Fore.YELLOW + msg + Style.RESET_ALL
 
 def blue(msg: str):
-    """
-    returns a given string in blue text
-    """
+    """returns a given string in blue text"""
     return Fore.BLUE + msg + Style.RESET_ALL
 
 def cyan(msg: str):
-    """
-    returns a given string in cyan text
-    """
+    """returns a given string in cyan text"""
     return Fore.CYAN + msg + Style.RESET_ALL
 
 def magenta(msg: str):
-    """
-    returns a given string in magenta text
-    """
+    """returns a given string in magenta text"""
     return Fore.MAGENTA + msg + Style.RESET_ALL
 
 def white_space_trail(msg: str) -> List[str]:
-    """
-    split but keep trailing whitespace at the end of each word
+    """split but keep trailing whitespace at the end of each word
 
     :param msg:
     :type str:

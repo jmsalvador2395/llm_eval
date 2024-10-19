@@ -1,1 +1,1 @@
-from .unit_testing import unit_test
+from .unit_testing import run_tests
