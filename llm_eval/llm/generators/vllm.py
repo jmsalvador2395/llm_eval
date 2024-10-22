@@ -7,19 +7,19 @@ import time
 from .base import Generator
 from llm_eval.llm.session import Session
 
-class ChatVLLM(Generator):
+class VLLM(Generator):
     
     def __init__(self,
         *args,
         **kwargs,
     ):
-        super(ChatVLLM, self).__init__(*args, **kwargs)
+        super(VLLM, self).__init__(*args, **kwargs)
 
         self.tok = AutoTokenizer.from_pretrained(self.model_name)
         self.model = LLM(
             model=self.model_name,
             seed=int(time.time()),
-            #download_dir=model_cache,
+            download_dir=self.model_cache,
             max_model_len=self.max_length,
             enforce_eager=True,
             worker_use_ray=True,

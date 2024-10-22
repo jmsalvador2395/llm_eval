@@ -34,7 +34,7 @@ def main():
             response_collector.run(args, cfg, keywords)
         case 'evaluate':
             evaluation.collect_scores(args, cfg, keywords)
-        case 'unit_test':
+        case 'unittest':
             unit_testing.run_tests(args, cfg, keywords)
         case 'infill':
             response_collector.infilling(args, cfg, keywords)

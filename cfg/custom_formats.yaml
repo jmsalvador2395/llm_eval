@@ -1,0 +1,10 @@
+# This config is used for instruction-tuned models with tokenizers that
+# are missing the apply_chat_template() function. 
+
+mosaicml/mpt*: 
+  user: "### Instruction:\n"
+  assistant: "### Response:\n"
+
+lmsys/vicuna*:
+  user: "USER: "
+  assistant: "ASSISTANT: "

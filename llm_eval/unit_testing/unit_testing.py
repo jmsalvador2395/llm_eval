@@ -9,5 +9,5 @@ def run_tests(args, cfg, keywords):
         top_level_dir=files.project_root(),
     )
 
-    runner = unittest.TextTestRunner(verbosity=2)
+    runner = unittest.TextTestRunner(verbosity=args.verbosity)
     runner.run(suite)

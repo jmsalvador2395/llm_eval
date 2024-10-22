@@ -114,7 +114,7 @@ def parse():
     )
 
     # subparser for unit testing
-    parser_gen = subparser.add_parser('unit_test')
+    parser_gen = subparser.add_parser('unittest')
     parser_gen.add_argument(
         '-c',
         '--cfg',
@@ -125,10 +125,11 @@ def parse():
 
     parser_gen.add_argument(
         '-v',
-        '--verbose',
-        help='set to true to display more verbose failure messages',
-        action='store_true',
-        default=False,
+        '--verbosity',
+        help=('set to true to display more verbose failure messages. '
+              '(0, 1, 2)'),
+        type=int,
+        default=1,
     )
     
     # call to parse arguments

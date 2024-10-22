@@ -15,28 +15,29 @@ class Session:
     ):
         """
         Args:
-            sess_type: a string that is either 'chat' or 'gen'. 
+            sess_type: a string that is either 'chat' or 'standard'. 
               (Default: 'chat')
         Raises:
             ValueError: argument 'sess_type' must be either 'chat' or 
-              'gen'
+              'standard'
             ValueError: attempted to add a system role with history that
               already has it. To overwrite the existing role, set the
               'override_sys' flag to True
         """
         self.hist = hist
 
-        if sess_type not in ['chat', 'gen']:
+        if sess_type not in ['chat', 'standard']:
             raise ValueError(
                 'argument \'sess_type\' must be either \'chat\' or '
-                '\'gen\''
+                '\'standard\''
             )
         self.sess_type=sess_type
 
         el = {'role': 'system', 'content': system_role}
+
         if system_role and len(self.hist) == 0:
             self.hist.append(el)
-        else:
+        elif system_role and len(self.hist) > 0:
             if self.hist[0]['role'] != 'system':
                 self.hist = [el] + self.hist
             elif override_sys:
@@ -73,7 +74,7 @@ class Session:
             return None
         elif self.sess_type == 'chat':
             return self.hist[-1]['content']
-        elif self.sess_type == 'gen':
+        elif self.sess_type == 'standard':
             return self.hist[-1]
         else:
             raise Exception(
@@ -138,19 +139,19 @@ class SessionManager:
         Args:
             N: the number of sessions to be initialized
             session_type: the type of sessions to be initialized. Must 
-              be one of ['chat', 'gen']
+              be one of ['chat', 'standard']
         Returns:
             A list of 'Session' objects.
             for example:
 
             [Session([]), Session([])]
         Raises:
-            ValueError: 'session_type' must be one of ['chat', 'gen']'
+            ValueError: 'session_type' must be one of ['chat', 'standard']'
         """
 
-        if session_type not in ['chat', 'gen']:
+        if session_type not in ['chat', 'standard']:
             raise ValueError(
-                '\'session_type\' must be one of [\'chat\', \'gen\']'
+                '\'session_type\' must be one of [\'chat\', \'standard\']'
             )
         raise NotImplementedError()
 

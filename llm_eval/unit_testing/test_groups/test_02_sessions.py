@@ -13,9 +13,9 @@ class TestSessions(unittest.TestCase):
         """test if you can initialize a session with sess_type='chat'"""
         session = Session(sess_type='chat')
     
-    def test_init_chat_gen(self):
+    def test_init_chat_standard(self):
         """test if you can initialize a session with sess_type='gen'"""
-        session = Session(sess_type='gen')
+        session = Session(sess_type='standard')
     
     def test_invalid_init(self):
         """checks if an invalid sess_type raises an error"""

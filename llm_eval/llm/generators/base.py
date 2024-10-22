@@ -9,6 +9,7 @@ class Generator:
     """
     def __init__(self, 
         model_name: str, 
+        session_type: str='chat',
         top_p: float=1.0,
         top_k: int=-1,
         num_beams: int=1,
@@ -16,9 +17,11 @@ class Generator:
         sampling: bool=True,
         max_length: int=4096,
         seed: Optional[int]=None,
+        model_cache: Optional[str]=None,
         **kwargs,
     ):
         self.model_name = model_name
+        self.session_type=session_type
         self.top_p = top_p
         self.top_k = top_k
         self.num_beams = num_beams
@@ -26,6 +29,13 @@ class Generator:
         self.sampling = sampling
         self.max_length = max_length
         self.seed = seed
+        self.model_cache = model_cache
+
+        if session_type not in ['chat', 'standard']:
+            raise ValueError(
+                f'argument \'session_type\' is \'{self.session_type}\' '
+                f'should be one of [\'chat\', \'standard\']'
+            )
 
 
     def generate(self,
