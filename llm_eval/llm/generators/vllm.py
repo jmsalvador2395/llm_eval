@@ -45,12 +45,20 @@ class VLLM(Generator):
             sess.add_prompt(prompt)
             for sess, prompt in zip(sessions, prompts)
         ]
-        formatted_prompts = [
-            self.tok.apply_chat_template(
-                sess.get_hist(), 
-                tokenize=False) 
-            for sess in out_sessions
-        ]
+
+        if self.session_type == 'chat':
+            formatted_prompts = [
+                self.tok.apply_chat_template(
+                    sess.get_hist(), 
+                    tokenize=False) 
+                for sess in out_sessions
+            ]
+        # TODO
+        elif self.session_type == 'chat_custom':
+            raise NotImplementedError()
+        # TODO
+        elif self.session_type == 'standard':
+            raise NotImplementedError()
 
         # make inference call
         responses = self.model.generate(

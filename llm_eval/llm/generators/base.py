@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 import time
 
 class Generator:
@@ -31,10 +31,11 @@ class Generator:
         self.seed = seed
         self.model_cache = model_cache
 
-        if session_type not in ['chat', 'standard']:
+        if session_type not in ['chat', 'chat_custom', 'standard']:
             raise ValueError(
                 f'argument \'session_type\' is \'{self.session_type}\' '
-                f'should be one of [\'chat\', \'standard\']'
+                f'should be one of [\'chat\', \'chat_custom\', '
+                f'\'standard\']'
             )
 
 

@@ -22,12 +22,7 @@ def clean_multiline(text: str) -> str:
 
 def replace_slots(text: str, entries: dict) -> str:
     for key, value in entries.items():
-        if not isinstance(value, str):
-            value = str(value)
-        text = text.replace(
-            "{{" + key +"}}",
-            value.replace('"', "'").replace('\n', "")
-        )
+        text = re.sub("{{\s*" + key +"\s*}}", value, text)
     return text
 
 def remove_tilde(text: str) -> str:
