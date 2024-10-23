@@ -160,6 +160,17 @@ class TestLLMs(unittest.TestCase):
                     text = apply_custom_format(
                         self.custom_formats[key], 
                         self.session,
+                        for_reply=False
+                    )
+                    text_for_reply = apply_custom_format(
+                        self.custom_formats[key],
+                        self.session,
+                        for_reply=True
+                    )
+                    self.assertEqual(
+                        text_for_reply.replace(text, '').strip(),
+                        self.custom_formats[key]['for_reply'].strip(),
+                        'for_reply template not properly applied'
                     )
                 except Exception as e:
                     self.fail(
@@ -193,3 +204,52 @@ class TestLLMs(unittest.TestCase):
 
         if failed:
             self.fail(fail_str)
+
+
+    def test_05_check_custom_formats_syntax(self):
+        """checks if the custom_formats file can load"""
+        # read custom formats
+        custom_formats_path = (
+            f'{files.project_root()}'
+            f'/cfg/custom_formats.yaml'
+        )
+        try:
+            f = open(custom_formats_path)
+        except Exception as e:
+            self.fail(
+                f'custom formats file not found at '
+                f'{custom_formats_path}'
+            )
+
+        try:
+            custom_formats = yaml.safe_load(f.read())
+        except Exception as e:
+            f.close()
+            self.fail(
+                f'file {custom_formats_path} has a syntax error'
+                f'\nError message: {str(e)}'
+            )
+
+    def test_06_check_model_list_syntax(self):
+        """checks if the model list cfg can load"""
+        # read model list
+        model_list_path = (
+            f'{files.project_root()}'
+            f'/cfg/supported_models.yaml'
+        )
+
+        try:
+            f = open(model_list_path)
+        except Exception as e:
+            self.fail(
+                f'model list file not found at {model_list_path}'
+            )
+
+        try:
+            model_list = yaml.safe_load(f.read())
+        except Exception as e:
+            f.close()
+            print(
+                f'file {model_list_path} has a syntax error'
+                f'\nError message: {str(e)}'
+            )

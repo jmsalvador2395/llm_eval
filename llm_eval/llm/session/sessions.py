@@ -196,6 +196,7 @@ def create_sessions(
 def apply_custom_format(
     format: Dict[str, str],
     sessions: Session | List[Session],
+    for_reply: bool=True
 ) -> str | List[str]:
     r"""applies a custom format to a chat session or list of sessions
 
@@ -203,7 +204,8 @@ def apply_custom_format(
         {'system': <SYSTEM_FORMAT>,
          'user': <USER_FORMAT>,
          'assistant': <ASSISTANT_FORMAT>}
-    and applies it to the chat history of a session.
+    and creates a string using the chat history of a session. adds a
+    blank assistant token at the end to prepare for model generation.
 
     Example:
         >>> keys = {
@@ -230,20 +232,26 @@ def apply_custom_format(
           roles. if no 'system' role is defined, it is used in the
           content of the first 'user' turn
         sessions: a singleton or list of Session objects. 
-    
+        for_reply: 'True' if you want to add a blank assistant token at
+          the end of the formatted string. (Default: True)
+
     Returns:
         a singleton or list of strings that have applied the chat 
           template
     """
     if isinstance(sessions, list):
         return [
-            _apply_format(format, session) for session in sessions
+            _apply_format(format, session, for_reply)
+            for session in sessions
         ]
     else:
-        return _apply_format(format, sessions)
+        return _apply_format(format, sessions, for_reply)
 
 
-def _apply_format(format, session):
+def _apply_format(
+        format: Dict[str, str], 
+        session: Session, 
+        for_reply: bool=True):
     """applies the chat template to a single session
 
     Applies the chat template to a single session. history valididty
@@ -267,6 +275,14 @@ def _apply_format(format, session):
     contents = [turn['content'] for turn in hist]
     if len(roles) == 0:
         return ''
+
+    if for_reply and roles[-1] == 'assistant':
+        raise ValueError(
+            f'attempted to add the \'for_reply\' element but the last '
+            f'turn in the chat already has an \'assistant\' role. '
+            f'perpetrating session:\n{session}'
+        )
+        
     
     # if no system format is defined, roll system prompt over to first
     # user content
@@ -279,4 +295,8 @@ def _apply_format(format, session):
         out_text += strings.replace_slots(
             format[role], {'content': content}
         )
-    return out_text
+    
+    if for_reply:
+        out_text += format['for_reply']
+
+    return out_text.strip()

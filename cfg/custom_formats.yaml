@@ -3,8 +3,10 @@
 
 mosaicml/mpt.*: 
   user: "### Instruction:\n{{content}}\n"
-  assistant: "### Response:\n{{content}}\n"
+  assistant: "\n### Response:\n{{content}}\n"
+  for_reply: "\n### Response:\n"
 
 lmsys/vicuna.*:
   user: "USER: {{content}}\n"
   assistant: "ASSISTANT: {{content}}\n"
+  for_reply: "ASSISTANT: "
