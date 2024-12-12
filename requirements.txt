@@ -22,9 +22,7 @@ tokenizers
 torch
 tqdm
 transformers
-vllm
-#vllm==0.4.2
-#vllm==0.4.0.post1
+vllm==0.6.2
 jsonlines
 fuzzywuzzy
 spacy

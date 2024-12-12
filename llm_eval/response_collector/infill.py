@@ -4,15 +4,9 @@ off certain fields
 """
 
 # external imports
-import ray
-import torch
-import gc
-import os
-import sys
-import traceback
+import evaluate
 import json
 import datasets
-import time
 import numpy as np
 import random
 import sqlite3
@@ -20,11 +14,7 @@ from functools import partial
 from numpy.lib.stride_tricks import sliding_window_view
 from tqdm import tqdm
 from datasets import Dataset
-#from vllm.model_executor.parallel_utils.parallel_state import ( destroy_model_parallel)
-from vllm.distributed import destroy_model_parallel
-from torch.distributed import destroy_process_group
 from nltk import sent_tokenize
-from multiprocessing import Pool, current_process
 from typing import List
 import re
 
@@ -104,7 +94,7 @@ def get_one_of_each_problem(text, row_id, ds_name, max_sents, max_words):
     count = 0
 
     # compute minimums then set to 0 if minimum is negative
-    max_sents = max(min(max_sents, len(clean_sents)-2), 0)
+    max_sents = max(min(max_sents, len(sents)-2), 0)
     max_words = max(min(max_words, len(clean_words)-2), 0)
 
     for n_words in range(1, max_words+1):
@@ -123,15 +113,15 @@ def get_one_of_each_problem(text, row_id, ds_name, max_sents, max_words):
         unit_indices.append(start_idx)
     
     for n_sents in range(1, max_sents+1):
-        start_idx = random.randint(1, len(clean_sents)-n_sents-1)
+        start_idx = random.randint(1, len(sents)-n_sents-1)
         count += 1
         answers.append(' '.join(
-            clean_sents[start_idx:start_idx+n_sents]
+            sents[start_idx:start_idx+n_sents]
         ))
         problems.append(
-            ' '.join(clean_sents[:start_idx])
+            ' '.join(sents[:start_idx])
             + blank
-            + ' '.join(clean_sents[start_idx+n_sents:])
+            + ' '.join(sents[start_idx+n_sents:])
         )
         units.append('sentence(s)')
         ns.append(n_sents)
@@ -434,9 +424,16 @@ def infill_evaluate(args, cfg, keywords):
 
     metric = args.metric
     db_path = args.from_ckpt
+    batch_size = cfg.infill['batch_size']
 
     con = sqlite3.connect(db_path)
     cur = con.cursor()
+
+    kwargs = cfg.infill['kwargs'].get(metric, dict())
+    if metric == 'bertscore':
+        critic = evaluate.load('evaluate-metric/bertscore')
+    elif metric == 'rouge':
+        critic = evaluate.load('rouge')
 
     cur.execute(
         """
@@ -449,7 +446,55 @@ def infill_evaluate(args, cfg, keywords):
         """
     )
 
-    breakpoint()
+    read_cur = con.cursor()
+    data_cur = read_cur.execute(
+        f"""
+        SELECT R.rowid, F.problem, F.answer, R.response
+        FROM responses R, prompts P, fitb_problems F
+        WHERE R.prompt_id=P.rowid AND P.problem_id=F.rowid
+        """
+    )
+
+    keys = ['resp_id', 'problem', 'answer', 'response']
+    
+    N, = cur.execute('select count(*) from responses').fetchone()
+    N_batch = N // batch_size
+    if N % batch_size:
+        N_batch += 1
+    for batch in tqdm(
+        fetch_batches(data_cur, batch_size, keys=keys), 
+        total=N_batch, desc=f'evaluating {metric}'
+    ):
+        scores = critic.compute(
+            predictions=batch['response'],
+            references=batch['answer'],
+            **kwargs
+        )
+        if metric == 'bertscore':
+            for key in ['precision', 'recall', 'f1']:
+                cur.executemany(
+                    f"""
+                    INSERT INTO scores (resp_id, metric, score)
+                    VALUES (?, ?, ?)
+                    """,
+                    zip(
+                        batch['resp_id'], [metric]*len(scores[key]), 
+                        scores[key]
+                    )
+                )
+        elif metric == 'rouge':
+            for key in ['rouge1', 'rouge2', 'rougeL', 'rougeLsum']:
+                cur.executemany(
+                    f"""
+                    INSERT INTO scores (resp_id, metric, score)
+                    VALUES (?, ?, ?)
+                    """,
+                    zip(
+                        batch['resp_id'], [metric]*len(scores[key]), 
+                        scores[key]
+                    )
+                )
+        con.commit()
 
 def fetch_batches(cursor, batch_size, keys=None):
     while True:

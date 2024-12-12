@@ -54,6 +54,12 @@ infill:
   max_blank_sents: 5
   max_blank_words: 0
   one_of_each: True
+  kwargs:
+    bertscore:
+      device: "cuda:3"
+      lang: "en"
+    rouge:
+      use_aggregator: False
 
 resp_coll:
   ds_cache: "{{project_root}}/data/cache"
