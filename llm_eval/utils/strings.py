@@ -21,9 +21,30 @@ def clean_multiline(text: str) -> str:
 	return text.strip('\n')
 
 def replace_slots(text: str, entries: dict) -> str:
+    """
+    from copy import deepcopy
+    otext = deepcopy(text)
     for key, value in entries.items():
-        text = re.sub("{{\s*" + key +"\s*}}", value, text)
+        text = re.sub(r"\{\{\s*" + key + "\}\}\s*", str(value), text)
+    if re.match(r"\{\{\s*" + key + "\}\}\s*", text):
+         breakpoint()
     return text
+    """
+
+    # Regular expression to match placeholders with optional spaces
+    pattern = r"\{\{\s*(.*?)\s*\}\}"
+
+    # Replacement function
+    def replacer(match):
+        key = match.group(1).strip()
+        return str(entries.get(key, f"{{{{{key}}}}}"))
+
+    # Perform the replacement
+    result = re.sub(pattern, replacer, text)
+
+    return result
+
+
 
 def remove_tilde(text: str) -> str:
     return text.split('```')[1] 

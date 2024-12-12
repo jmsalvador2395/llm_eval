@@ -1,0 +1,31 @@
+#!/usr/bin/env python
+
+import argparse
+import sqlite3
+import numpy as np
+
+from IPython.terminal.embed import InteractiveShellEmbed
+
+def main(args):
+    pth = args.path
+    con = sqlite3.connect(pth)
+    cur = con.cursor()
+    tables = list(list(zip(*cur.execute(
+        'select name from sqlite_master where type="table";'
+    ).fetchall()))[0])
+
+    columns = dict()
+    for name in tables:
+        tbl_info = cur.execute(f"PRAGMA table_info({name});").fetchall()
+        _, cols, _, _, _, _ = zip(*tbl_info)
+        columns[name] = list(cols)
+    
+    ipshell = InteractiveShellEmbed()
+    ipshell()
+        
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--path', type=str, required=True)
+    args = parser.parse_args()
+    main(args)

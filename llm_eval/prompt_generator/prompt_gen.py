@@ -5,6 +5,9 @@ import random
 import itertools
 from datasets import Dataset
 from itertools import product
+import sqlite3
+from tqdm import tqdm
+
 from llm_eval.utils import (
     files,
     display,
@@ -20,7 +23,7 @@ class PromptGenerator:
         elif procedure == 'infill':
             prompt_groups = cfg.infill.get('prompt_templates')
         else:
-            raise Exception('Invalid procedure running?')
+            raise Exception('Invalid procedure running: `{procedure}`')
 
         if prompt_groups is None:
             display.error(
@@ -46,7 +49,28 @@ class PromptGenerator:
             
         self.templates = templates
     
-    def prepare_infill_data(self, ds):
+    def prepare_infill_data(self, keys, db_path):
+
+        con = sqlite3.connect(db_path)
+        cur = con.cursor()
+
+        keys = ['rowid'] + keys
+
+        # create prompt table
+        res = cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS prompts (
+                template_name text,
+                template_id int,
+                sys_id int,
+                sys_text text,
+                prompt_text text,
+                problem_id int,
+                PRIMARY KEY (problem_id, template_name, sys_id, template_id)
+                FOREIGN KEY (problem_id) references fitb_problems(rowid)
+            );
+            """
+        )
 
         # create combinations
         tmplt_names = []
@@ -62,8 +86,8 @@ class PromptGenerator:
 
         prompt_data = [
             {
-                'tmplt_name': tmplt_names[tmplt_id],
-                'tmplt_id': tmplt_idx[tmplt_id],
+                'template_name': tmplt_names[tmplt_id],
+                'template_id': tmplt_idx[tmplt_id],
                 'sys_id': sys_id,
                 'sys_text': self.sys_text[sys_id],
                 'prompt_text': prompts[tmplt_id],
@@ -71,44 +95,57 @@ class PromptGenerator:
             for sys_id, tmplt_id in combos
         ]
 
-        def map_fn(batch, **fn_kwargs):
-            prompts = fn_kwargs['prompts']
-            sample_keys = list(dict(batch).keys())
-            prompt_keys = list(prompts[0].keys())
-            all_keys = sample_keys + prompt_keys
-
-            out_batch = {key: [] for key in sample_keys+prompt_keys}
-            N = len(batch[sample_keys[0]])
-            for prompt in prompts:
-                for n in range(N):
-                    sample = (
-                        prompt 
-                        | {key:batch[key][n] for key in sample_keys}
-                    )
-                    sample['prompt_text'] = strings.replace_slots(
-                        sample['prompt_text'],
-                        sample
-                    )
-                    sample['sys_text'] = strings.replace_slots(
-                        sample['sys_text'],
-                        sample
-                    )
-                    for key in sample.keys():
-                        out_batch[key].append(sample[key])
-
-            return out_batch
-        
-        ds = ds.map(
-            map_fn,
-            fn_kwargs={
-                'prompts': prompt_data},
-            batched=True,
-            batch_size=16,
-            num_proc=8,
+        N = cur.execute(
+            'select count(*) from fitb_problems'
+        ).fetchone()[0]
+        data_cur = cur.execute(
+            f"select {','.join(keys)} from fitb_problems"
         )
 
-        return ds
+        writer_cur = con.cursor()
+        out_keys = [
+            'template_name', 'template_id', 'sys_id', 
+            'sys_text', 'prompt_text', 'problem_id',
+        ]
+        data_queue = {key: [] for key in out_keys}
+        for count, sample in enumerate(
+            tqdm(data_cur, total=N, desc='creating LLM prompts')
+        ):
+            sample_dict = dict(zip(keys, sample))
+            for prompt in prompt_data:
+                union_dict = sample_dict | prompt
+                prompt_text = strings.replace_slots(
+                    union_dict['prompt_text'], union_dict
+                )
+                sys_text = strings.replace_slots(
+                    union_dict['sys_text'], union_dict
+                )
+                data_queue['prompt_text'].append(prompt_text)
+                data_queue['sys_text'].append(sys_text)
+                data_queue['problem_id'].append(sample_dict['rowid'])
+                for key in ['template_name', 'template_id', 'sys_id']:
+                    data_queue[key].append(union_dict[key])
 
+            # dump samples into the database
+            if count % 1000 == 0:
+                writer_cur.executemany(
+                    f"""
+                    INSERT INTO prompts ({', '.join(data_queue.keys())}) 
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """, 
+                    zip(*data_queue.values())
+                )
+                con.commit()
+                data_queue = {key: [] for key in out_keys}
+
+        cur.executemany(
+            f"""
+            INSERT INTO prompts ({', '.join(data_queue.keys())}) 
+            VALUES (?, ?, ?, ?, ?, ?)
+            """, 
+            zip(*data_queue.values())
+        )
+        con.commit()
 
     def prepare_data(self, data):
         cfg = self.cfg

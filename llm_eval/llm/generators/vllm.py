@@ -32,12 +32,11 @@ class VLLM(Generator):
             max_tokens=self.max_length,
         )
 
-
-
     @wraps(Generator.generate)
     def generate(self, 
         sessions: List[Session],
-        prompts: List[str]
+        prompts: List[str],
+        use_tqdm: bool=False,
     ) -> Tuple[List[Session], List[str]]:
 
         # prepare model input
@@ -47,23 +46,17 @@ class VLLM(Generator):
         ]
 
         if self.session_type == 'chat':
-            formatted_prompts = [
-                self.tok.apply_chat_template(
-                    sess.get_hist(), 
-                    tokenize=False) 
-                for sess in out_sessions
-            ]
+            chats = [sess.get_hist() for sess in out_sessions]
+            # make inference call
+            responses = self.model.chat(
+                chats, self.sampling_params, use_tqdm=use_tqdm
+            )
         # TODO
         elif self.session_type == 'chat_custom':
             raise NotImplementedError()
         # TODO
         elif self.session_type == 'standard':
             raise NotImplementedError()
-
-        # make inference call
-        responses = self.model.generate(
-            formatted_prompts, self.sampling_params
-        )
         
         # convert responses to text
         responses = [resp.outputs[0].text for resp in responses]

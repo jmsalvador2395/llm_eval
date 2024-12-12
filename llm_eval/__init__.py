@@ -36,8 +36,12 @@ def main():
             evaluation.collect_scores(args, cfg, keywords)
         case 'unittest':
             unit_testing.run_tests(args, cfg, keywords)
-        case 'infill':
-            response_collector.infilling(args, cfg, keywords)
+        case 'infill_setup':
+            response_collector.infill_setup(args, cfg, keywords)
+        case 'infill_solve':
+            response_collector.infill_solve(args, cfg, keywords)
+        case 'infill_evaluate':
+            response_collector.infill_evaluate(args, cfg, keywords)
         case _:
             raise NotImplementedError(utils.strings.clean_multiline(
                 """

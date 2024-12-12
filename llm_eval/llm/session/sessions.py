@@ -1,5 +1,6 @@
 from typing import List, Tuple, Dict, Self, Optional
 import re
+import copy
 
 from llm_eval.utils import strings
 
@@ -27,14 +28,14 @@ class Session:
               already has it. To overwrite the existing role, set the
               'override_sys' flag to True
         """
-        self.hist = hist
+        self.hist = copy.deepcopy(hist)
 
         if sess_type not in ['chat', 'chat_custom', 'standard']:
             raise ValueError(
                 'argument \'sess_type\' must be either \'chat\' or '
                 '\'chat_custom\' or \'standard\''
             )
-        self.sess_type=sess_type
+        self.sess_type = sess_type
 
         # validate history.
         if len(self.hist) > 0:

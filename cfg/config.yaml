@@ -1,7 +1,3 @@
-
-api_keys:
-    palm: AIzaSyBb8GFD5qPUtZ62zaZ3a2Vh8GMgoRg0UnI
-
 datasets:
   all_sides: 
     type: "json"
@@ -41,12 +37,12 @@ datasets:
 infill:
   ds_cache: "{{project_root}}/data/cache"
   save_dir: "{{project_root}}/data/results"
-  checkpoint_interval: 50
+  batch_size: 1000
   prompt_templates:
   target_data:
     - "stanfordnlp/sst2"
     - "abisee/cnn_dailymail"
-  num_proc: 4
+  num_proc: 8
   chunk_size: 32
   prompt_templates:
     sys: "{{project_root}}/cfg/prompts/fitb_system.yaml"
@@ -56,7 +52,8 @@ infill:
     fitb_l3: "{{project_root}}/cfg/prompts/fitb_l3.yaml" 
     fitb_l4: "{{project_root}}/cfg/prompts/fitb_l4.yaml" 
   max_blank_sents: 5
-  max_blank_words: 1
+  max_blank_words: 0
+  one_of_each: True
 
 resp_coll:
   ds_cache: "{{project_root}}/data/cache"
@@ -77,22 +74,7 @@ resp_coll:
     - meta-llama/Meta-Llama-3-8B-Instruct
     - meta-llama/Llama-2-7b-chat-hf
     - meta-llama/Llama-2-13b-chat-hf
-#    - "gemini-pro"
-#    - "gpt-3.5-turbo"
-#    - "gpt-4"
-#    - "mistralai/Mistral-7B-Instruct-v0.1"
-#    - "mistralai/Mistral-7B-Instruct-v0.2"
-#    - "lmsys/vicuna-7b-v1.5"
-#    - "lmsys/vicuna-7b-v1.5-16k"
-#    - "lmsys/vicuna-13b-v1.5"
-#    - "lmsys/vicuna-13b-v1.5-16k"
-#    - "mosaicml/mpt-7b-instruct"
-#    - "mosaicml/mpt-30b-instruct"
-#    - "mosaicml/mpt-7b-chat"
-#    - "mosaicml/mpt-30b-chat"
-#    #- "tiiuae/falcon-7b-instruct"
-#    #- "chat-bison-001"
-#    #- "meta-llama/Llama-2-70b-chat-hf"
+    - meta-llama/Llama-3.2-1B-Instruct
 
 eval:
   metrics:
@@ -104,16 +86,9 @@ eval:
 
 model_params:
   model_cache: "{{project_root}}/data/llm_cache"
-  #model_cache: "/data/shared/llm_cache"
-  #model_cache: "/data/john/cache"
-  use_sampling_params: False
   max_length: 4096
-  #max_length: 2048
   num_output_tokens: 512
-  temperature: 0.8
-  batch_size: 2
-  num_devices: 1
-  #dtype: "float16"
+  temperature: 0.2
   dtype: "auto"
 
 unit_test: 

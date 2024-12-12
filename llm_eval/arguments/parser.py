@@ -72,30 +72,70 @@ def parse():
         help='use this to provide a di',
     )
  
-    # add subparser for infilling procedure
-    parser_rc = subparser.add_parser('infill')
-    parser_rc.add_argument(
+    # add subparser for infilling setup
+    parser_is = subparser.add_parser('infill_setup')
+    parser_is.add_argument(
         '-c', '--cfg', help='config path',
         default=f'{files.project_root()}/cfg/config.yaml',
     )
-    parser_rc.add_argument(
+    parser_is.add_argument(
         '-d', '--debug', action='store_true', default=False,
         help=(
             'sets the program to debug mode. moves outputs to '
             'special locations'),
     )
-    parser_rc.add_argument(
-        '-l', '--limit', type=int,
-        help='sets the number of samples to work on', default=None,
-    )
-    parser_rc.add_argument(
+    parser_is.add_argument(
         '--from_ckpt', default=None, type=str,
         help=('if continuing from a checkpoint, provide the directory '
               'with this flag'),
     )
-    parser_rc.add_argument(
+
+    # subparser for solving the infilling problems
+    parser_is = subparser.add_parser('infill_solve')
+    parser_is.add_argument(
+        '-c', '--cfg', help='config path',
+        default=f'{files.project_root()}/cfg/config.yaml',
+    )
+    parser_is.add_argument(
+        '-d', '--debug', action='store_true', default=False,
+        help=(
+            'sets the program to debug mode. moves outputs to '
+            'special locations'),
+    )
+    parser_is.add_argument(
         '--model', default=None, type=str, required=True,
         help='the model to collect data on',
+    )
+    parser_is.add_argument(
+        '-l', '--limit', type=int,
+        help='sets the number of samples to work on', default=None,
+    )
+    parser_is.add_argument(
+        '--from_ckpt', default=None, type=str,
+        help=('if continuing from a checkpoint, provide the directory '
+              'with this flag'),
+    )
+
+    # subparser for evaluating the infilling responses
+    parser_is = subparser.add_parser('infill_evaluate')
+    parser_is.add_argument(
+        '-c', '--cfg', help='config path',
+        default=f'{files.project_root()}/cfg/config.yaml',
+    )
+    parser_is.add_argument(
+        '-d', '--debug', action='store_true', default=False,
+        help=(
+            'sets the program to debug mode. moves outputs to '
+            'special locations'),
+    )
+    parser_is.add_argument(
+        '--metric', type=str, required=True,
+        help='the metric to evaluate with',
+    )
+    parser_is.add_argument(
+        '--from_ckpt', default=None, type=str,
+        help=('if continuing from a checkpoint, provide the directory '
+              'with this flag'),
     )
 
     # parser for the evaluation procedure
