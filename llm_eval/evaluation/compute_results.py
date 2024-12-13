@@ -26,7 +26,7 @@ from llm_eval.utils import (
     strings,
     display,
 )
-from .similarity_metrics import use_similarity, sbert_similarity
+#from .similarity_metrics import use_similarity, sbert_similarity
 #from .compute_fans import compute_fans
 
 def collect_scores(args, cfg, keywords):

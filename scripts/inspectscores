@@ -1,0 +1,49 @@
+#!/usr/bin/env python
+
+import argparse
+import sqlite3
+import numpy as np
+from datasets import Dataset
+
+from IPython.terminal.embed import InteractiveShellEmbed
+
+def main(args):
+    pth = args.path
+    con = sqlite3.connect(pth)
+    cur = con.cursor()
+    tables = list(list(zip(*cur.execute(
+        'select name from sqlite_master where type="table";'
+    ).fetchall()))[0])
+
+    columns = dict()
+    for name in tables:
+        tbl_info = cur.execute(f"PRAGMA table_info({name});").fetchall()
+        _, cols, _, _, _, _ = zip(*tbl_info)
+        columns[name] = list(cols)
+    
+    keys = columns['scores']
+
+    read_cur = con.cursor()
+    data_cur = read_cur.execute(
+        f"""
+        SELECT R.rowid, F.problem, F.answer, R.response, S.metric, S.score
+        FROM scores S, responses R, prompts P, fitb_problems F
+        WHERE S.resp_id=R.rowid AND R.prompt_id=P.rowid AND P.problem_id=F.rowid
+        """
+    )
+    data = dict(zip(
+        ['resp_id', 'problem', 'answer', 'response', 'metric', 'score'], 
+        zip(*data_cur.fetchall())
+    ))
+
+    ds = Dataset.from_dict(data)
+    
+    ipshell = InteractiveShellEmbed()
+    ipshell()
+        
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--path', type=str, required=True)
+    args = parser.parse_args()
+    main(args)

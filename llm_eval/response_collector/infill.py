@@ -478,7 +478,8 @@ def infill_evaluate(args, cfg, keywords):
                     VALUES (?, ?, ?)
                     """,
                     zip(
-                        batch['resp_id'], [metric]*len(scores[key]), 
+                        batch['resp_id'], 
+                        [f'bertscore-{metric}']*len(scores[key]), 
                         scores[key]
                     )
                 )

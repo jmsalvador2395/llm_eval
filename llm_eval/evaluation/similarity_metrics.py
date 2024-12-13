@@ -1,5 +1,5 @@
 # TODO: Not working on gpu rn.
-import tensorflow_hub as hub
+#import tensorflow_hub as hub
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
