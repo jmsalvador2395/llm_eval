@@ -4,6 +4,7 @@ import argparse
 import sqlite3
 import numpy as np
 from datasets import Dataset
+from pprint import pprint
 
 from IPython.terminal.embed import InteractiveShellEmbed
 
@@ -20,23 +21,41 @@ def main(args):
         tbl_info = cur.execute(f"PRAGMA table_info({name});").fetchall()
         _, cols, _, _, _, _ = zip(*tbl_info)
         columns[name] = list(cols)
-    
+
     keys = columns['scores']
 
     read_cur = con.cursor()
-    data_cur = read_cur.execute(
+    metrics = cur.execute(
+        'select distinct(metric) from scores'
+    ).fetchall()
+    metrics = list(zip(*metrics))[0]
+
+    joinstr = ',\n'
+    query = (
         f"""
-        SELECT R.rowid, F.problem, F.answer, R.response, S.metric, S.score
-        FROM scores S, responses R, prompts P, fitb_problems F
-        WHERE S.resp_id=R.rowid AND R.prompt_id=P.rowid AND P.problem_id=F.rowid
+        SELECT S.resp_id, R.model, P.template_name, P.problem_id, P.template_id, P.sys_id, F.problem, F.answer, R.response, S.metric,
+            {joinstr.join(f'MAX(CASE WHEN S.metric="{met}" THEN S.score END) AS "{met}"' for met in metrics)}
+        FROM scores S
+        JOIN responses R on S.resp_id=R.rowid 
+        JOIN prompts P on R.prompt_id=P.rowid
+        JOIN fitb_problems F on P.problem_id=F.rowid
+        JOIN source_data C on F.ref_id=C.rowid
+        GROUP BY S.resp_id, R.prompt_id, P.problem_id, F.ref_id, C.rowid
         """
     )
-    data = dict(zip(
-        ['resp_id', 'problem', 'answer', 'response', 'metric', 'score'], 
-        zip(*data_cur.fetchall())
-    ))
+    # data = dict(zip(
+    #     ['resp_id', 'problem', 'answer', 'response', 'metric', 'score'], 
+    #     zip(*data_cur.fetchall())
+    # ))
 
-    ds = Dataset.from_dict(data)
+    # ds = Dataset.from_dict(data)
+
+    keys = [
+        'resp_id', 'model', 'template_name', 'problem_id', 
+        'template_id', 'sys_id', 'problem', 'answer', 'response', 
+        'metric'
+    ] + list(metrics)
+    data = dict(zip(keys, zip(*cur.execute(query).fetchall())))
     
     ipshell = InteractiveShellEmbed()
     ipshell()

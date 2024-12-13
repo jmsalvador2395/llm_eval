@@ -366,7 +366,7 @@ def infill_solve(args, cfg, keywords):
     batch_size = cfg.infill['batch_size']
     limit = args.limit
 
-    db_path = f"{args.from_ckpt}/data.db"
+    db_path = args.from_ckpt
     con = sqlite3.connect(db_path)
     cur = con.cursor()
 
@@ -430,10 +430,13 @@ def infill_evaluate(args, cfg, keywords):
     cur = con.cursor()
 
     kwargs = cfg.infill['kwargs'].get(metric, dict())
+    mets = ['bertscore', 'rouge']
     if metric == 'bertscore':
         critic = evaluate.load('evaluate-metric/bertscore')
     elif metric == 'rouge':
         critic = evaluate.load('rouge')
+    else:
+        raise ValueError(f'choose from either [{", ".join(mets)}]')
 
     cur.execute(
         """
@@ -479,7 +482,7 @@ def infill_evaluate(args, cfg, keywords):
                     """,
                     zip(
                         batch['resp_id'], 
-                        [f'bertscore-{metric}']*len(scores[key]), 
+                        [f'bertscore_{key}']*len(scores[key]), 
                         scores[key]
                     )
                 )
@@ -491,7 +494,7 @@ def infill_evaluate(args, cfg, keywords):
                     VALUES (?, ?, ?)
                     """,
                     zip(
-                        batch['resp_id'], [metric]*len(scores[key]), 
+                        batch['resp_id'], [key]*len(scores[key]), 
                         scores[key]
                     )
                 )
