@@ -56,7 +56,6 @@ infill:
   one_of_each: True
   kwargs:
     bertscore:
-      device: "cuda:3"
       lang: "en"
     rouge:
       use_aggregator: False

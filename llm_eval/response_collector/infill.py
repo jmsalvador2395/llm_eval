@@ -433,20 +433,35 @@ def infill_evaluate(args, cfg, keywords):
     mets = ['bertscore', 'rouge']
     if metric == 'bertscore':
         critic = evaluate.load('evaluate-metric/bertscore')
+        met_cols = ['precision', 'recall', 'f1']
+        table_names = [f'bertscore_{met}' for met in met_cols]
     elif metric == 'rouge':
         critic = evaluate.load('rouge')
+        met_cols = ['rouge1', 'rouge2', 'rougeL', 'rougeLsum']
+        table_names = met_cols
     else:
         raise ValueError(f'choose from either [{", ".join(mets)}]')
-
+    
+    # create table to keep track of which tables actually contain scores
     cur.execute(
         """
-        CREATE TABLE IF NOT EXISTS scores (
-            resp_id int,
-            metric text,
-            score double,
-            FOREIGN KEY (resp_id) REFERENCES responses(rowid)
-        )
+        CREATE TABLE IF NOT EXISTS metric_names (name text PRIMARY KEY)
         """
+    )
+    res = cur.executemany(
+        "INSERT OR IGNORE INTO metric_names VALUES (?)", 
+        zip(table_names)
+    )
+
+    for table_name in table_names:
+        cur.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS {table_name} (
+                resp_id int PRIMARY KEY,
+                score double,
+                FOREIGN KEY (resp_id) REFERENCES responses(rowid)
+            )
+            """
     )
 
     read_cur = con.cursor()
@@ -474,28 +489,27 @@ def infill_evaluate(args, cfg, keywords):
             **kwargs
         )
         if metric == 'bertscore':
-            for key in ['precision', 'recall', 'f1']:
+            for table_name, met in zip(table_names, met_cols):
                 cur.executemany(
                     f"""
-                    INSERT INTO scores (resp_id, metric, score)
-                    VALUES (?, ?, ?)
+                    INSERT INTO {table_name} (resp_id, score)
+                    VALUES (?, ?)
                     """,
                     zip(
                         batch['resp_id'], 
-                        [f'bertscore_{key}']*len(scores[key]), 
-                        scores[key]
+                        scores[met]
                     )
                 )
         elif metric == 'rouge':
-            for key in ['rouge1', 'rouge2', 'rougeL', 'rougeLsum']:
+            for table_name in table_names:
                 cur.executemany(
                     f"""
-                    INSERT INTO scores (resp_id, metric, score)
-                    VALUES (?, ?, ?)
+                    INSERT INTO {table_name} (resp_id, score)
+                    VALUES (?, ?)
                     """,
                     zip(
-                        batch['resp_id'], [key]*len(scores[key]), 
-                        scores[key]
+                        batch['resp_id'],
+                        scores[table_name]
                     )
                 )
         con.commit()
