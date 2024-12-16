@@ -22,8 +22,6 @@ def main(args):
         _, cols, _, _, _, _ = zip(*tbl_info)
         columns[name] = list(cols)
 
-    keys = columns['scores']
-
     metrics, = zip(*cur.execute(
         'select * from metric_names'
     ).fetchall())
