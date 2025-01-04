@@ -24,18 +24,12 @@ class VLLM(Generator):
             enforce_eager=True,
             worker_use_ray=True,
         )
-        self.sampling_params = SamplingParams(
-            temperature=self.temperature,
-            top_p=self.top_p,
-            top_k=self.top_k,
-            seed=self.seed,
-            max_tokens=self.max_length,
-        )
 
     @wraps(Generator.generate)
     def generate(self, 
         sessions: List[Session],
         prompts: List[str],
+        temp: float=None,
         use_tqdm: bool=False,
     ) -> Tuple[List[Session], List[str]]:
 
@@ -45,11 +39,20 @@ class VLLM(Generator):
             for sess, prompt in zip(sessions, prompts)
         ]
 
+
+        sampling_params = SamplingParams(
+            temperature=temp or self.temperature,
+            top_p=self.top_p,
+            top_k=self.top_k,
+            seed=self.seed,
+            max_tokens=self.max_length,
+        )
+
         if self.session_type == 'chat':
             chats = [sess.get_hist() for sess in out_sessions]
             # make inference call
             responses = self.model.chat(
-                chats, self.sampling_params, use_tqdm=use_tqdm
+                chats, sampling_params, use_tqdm=use_tqdm
             )
         # TODO
         elif self.session_type == 'chat_custom':

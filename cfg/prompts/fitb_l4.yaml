@@ -2,6 +2,29 @@
   {{problem}}
 
   * Fill in the blank with {{n}} {{unit}}.
+
+  Example of a 1 word problem: "The quick brown ______ jumped over the lazy dog"
+  Answer: "fox"
+
+  Example of a 2 word problem: "The quick ______ jumped over the lazy dog"
+  Answer: "brown fox"
+
+- |
+  * Fill in the blank with {{n}} {{unit}}.
+
+  Example of a 1 word problem: "The quick brown ______ jumped over the lazy dog"
+  Answer: "fox"
+
+  Example of a 2 word problem: "The quick ______ jumped over the lazy dog"
+  Answer: "brown fox"
+
+  {{problem}}
+  Answer:
+
+- |
+  {{problem}}
+
+  * Fill in the blank with {{n}} {{unit}}.
   * Only respond with your answer.
   * Do not go over or under than what you were instructed to guess.
 
@@ -10,3 +33,42 @@
 
   Example of a 2 word problem: "The quick ______ jumped over the lazy dog"
   Answer: "brown fox"
+
+- |
+  Example of a 1 word problem: "The quick brown ______ jumped over the lazy dog"
+  Answer: "fox"
+
+  Example of a 2 word problem: "The quick ______ jumped over the lazy dog"
+  Answer: "brown fox"
+
+  * Fill in the blank with {{n}} {{unit}}.
+  * Only respond with your answer.
+  * Do not go over or under than what you were instructed to guess.
+
+  {{problem}}
+  Answer:
+
+- |
+  {{problem}}
+
+  * the blank area is missing {{n}} {{unit}}. tell me the missing text
+  * follow the given examples
+
+  Example of a 1 word problem: "The quick brown ______ jumped over the lazy dog"
+  Answer: "fox"
+
+  Example of a 2 word problem: "The quick ______ jumped over the lazy dog"
+  Answer: "brown fox"
+
+- |
+  Example of a 1 word problem: "The quick brown ______ jumped over the lazy dog"
+  Answer: "fox"
+
+  Example of a 2 word problem: "The quick ______ jumped over the lazy dog"
+  Answer: "brown fox"
+
+  * the blank area is missing {{n}} {{unit}}. tell me the missing text
+  * your response hsould follow the given examples
+
+  {{problem}}
+  Answer:

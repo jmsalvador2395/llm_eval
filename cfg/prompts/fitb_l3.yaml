@@ -4,3 +4,33 @@
   * Fill in the blank with {{n}} {{unit}}.
   * Only respond with your answer.
   * Do not go over or under than what you were instructed to guess.
+
+- |
+  {{problem}}
+
+  * Fill in the blank with {{n}} {{unit}}.
+
+  Answer:
+
+- |
+  {{problem}}
+
+  * Fill in the blank.
+  * The blank area is missing {{n}} {{unit}}
+
+  Answer:
+
+- |
+  {{problem}}
+
+  * There are {{n}} {{unit}} missing. 
+  * What is the missing content?
+  * Just give me your answer.
+
+- |
+  {{problem}}
+
+  * There are {{n}} {{unit}} missing. 
+  * What is the missing content?
+
+  Answer:

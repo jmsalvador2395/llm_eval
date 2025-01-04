@@ -10,10 +10,9 @@ import datasets
 import numpy as np
 import random
 import sqlite3
-from functools import partial
+from itertools import product
 from numpy.lib.stride_tricks import sliding_window_view
 from tqdm import tqdm
-from datasets import Dataset
 from nltk import sent_tokenize
 from typing import List
 import re
@@ -205,8 +204,8 @@ def infill_setup(args, cfg, keywords):
 
     ds_cache = cfg.infill['ds_cache']
 
-    if args.from_ckpt:
-        save_loc = args.from_ckpt
+    if args.path:
+        save_loc = args.path
     else:
         # create database file
         save_loc = f'{cfg.infill["save_dir"]}/infill/{keywords["timestamp"]}'
@@ -357,6 +356,67 @@ def infill_setup(args, cfg, keywords):
     gen = PromptGenerator(cfg, 'infill')
     gen.prepare_infill_data(keys, db_path=db_file)
 
+def count_subsamples(cur, batch_size, limit):
+    res = cur.execute('SELECT DISTINCT template_name from prompts')
+    template_names, = list(zip(*res.fetchall()))
+    N = 0
+    for tmplt in template_names:
+        res = cur.execute(f'SELECT DISTINCT template_id from prompts P where P.template_name="{tmplt}"')
+        tids, = list(zip(*res.fetchall()))
+        res = cur.execute(f'SELECT DISTINCT sys_id from prompts P where P.template_name="{tmplt}"')
+        sids, = list(zip(*res.fetchall()))
+        N += len(tids)*len(sids)*limit
+        print(f'{tmplt}, tids: {len(tids)}, sids: {len(sids)}')
+
+    N_batch = N // batch_size
+    if N % batch_size:
+        N_batch += 1
+    return N_batch
+
+
+def fetch_subsamples(cur, batch_size, limit, keys=None):
+    res = cur.execute('SELECT DISTINCT template_name from prompts')
+    template_names, = list(zip(*res.fetchall()))
+    all_pids, = list(zip(*cur.execute(
+        'SELECT DISTINCT(problem_id) from prompts'
+    )))
+    pids = np.random.permutation(all_pids)[:limit]
+
+    for tmplt in template_names:
+        res = cur.execute(f'SELECT DISTINCT template_id from prompts P where P.template_name="{tmplt}"')
+        tids, = list(zip(*res.fetchall()))
+        res = cur.execute(f'SELECT DISTINCT sys_id from prompts P where P.template_name="{tmplt}"')
+        sids, = list(zip(*res.fetchall()))
+        for tid, sid in product(tids, sids):
+            res = cur.execute(
+                f"""
+                SELECT {', '.join(keys)} FROM prompts P
+                WHERE P.template_name="{tmplt}" 
+                    AND P.sys_id={sid} 
+                    AND P.template_id={tid}
+                    AND P.problem_id in {tuple(pids)}
+                """
+            )
+            while True:
+                batch = res.fetchmany(batch_size)
+                if not batch:
+                    break
+                if keys:
+                    yield dict(zip(keys, zip(*batch)))
+                else:
+                    yield batch
+
+def fetch_batches(cur, batch_size, keys=None):
+    res = cur.execute(f"select {', '.join(keys)} from prompts")
+    while True:
+        batch = res.fetchmany(batch_size)
+        if not batch:  # No more rows to fetch
+            break
+        if keys:
+            yield dict(zip(keys, zip(*batch)))
+        else:
+            yield batch
+
 def infill_solve(args, cfg, keywords):
     """solve problems created by infill_setup()
 
@@ -366,7 +426,7 @@ def infill_solve(args, cfg, keywords):
     batch_size = cfg.infill['batch_size']
     limit = args.limit
 
-    db_path = args.from_ckpt
+    db_path = args.path
     con = sqlite3.connect(db_path)
     cur = con.cursor()
 
@@ -381,6 +441,19 @@ def infill_solve(args, cfg, keywords):
         _, cnames, _, _, _, _ = zip(*tbl_info)
         cols[name] = list(cnames)
 
+    keys = ['rowid'] + cols['prompts']
+    if args.limit:
+        N_batch = count_subsamples(cur, batch_size, args.limit)
+        gen_fn = fetch_subsamples(
+            cur, batch_size, args.limit, keys=keys
+        )
+    else:
+        N, = cur.execute('select count(*) from prompts').fetchone()
+        N_batch = N // batch_size
+        if N % batch_size:
+            N_batch += 1
+        gen_fn = fetch_batches(cur, batch_size, keys=keys)
+
     model = VLLM(args.model)
 
     write_cur = con.cursor()
@@ -390,40 +463,42 @@ def infill_solve(args, cfg, keywords):
             prompt_id int,
             response text,
             model text,
-            PRIMARY KEY (prompt_id, model)
+            temperature double,
+            PRIMARY KEY (prompt_id, model, temperature)
             FOREIGN KEY (prompt_id) REFERENCES prompts(rowid)
         )
         """
     )
 
-    keys = ['rowid'] + cols['prompts']
-    N, = cur.execute('select count(*) from prompts').fetchone()
-    N_batch = N // batch_size
-    if N % batch_size:
-        N_batch += 1
-    prompt_cur = cur.execute(f"select {', '.join(keys)} from prompts")
-    for batch in tqdm(
-        fetch_batches(prompt_cur, batch_size, keys=keys), 
-        total=N_batch, desc='generating responses'
+    temps = cfg.infill.get('temps', [1.0])
+
+    for batch, temp in tqdm(
+        product(gen_fn, temps), 
+        total=N_batch*len(temps), 
+        desc='generating responses'
     ):
         sessions = [
             Session(system_role=sys_role) 
             for sys_role in batch['sys_text']
         ]
-        out_sess, resp = model.generate(sessions, batch['prompt_text'])
+        out_sess, resp = model.generate(
+            sessions, 
+            batch['prompt_text'],
+            temp=temp,
+        )
         write_cur.executemany(
             f"""
-            INSERT INTO responses (prompt_id, response, model)
-            VALUES (?, ?, ?)
+            INSERT INTO responses (prompt_id, response, model, temperature)
+            VALUES (?, ?, ?, ?)
             """,
-            zip(batch['rowid'], resp, [args.model]*batch_size)
+            zip(batch['rowid'], resp, [args.model]*batch_size, [temp]*batch_size,)
         )
         con.commit()
 
 def infill_evaluate(args, cfg, keywords):
 
     metric = args.metric
-    db_path = args.from_ckpt
+    db_path = args.path
     batch_size = cfg.infill['batch_size']
 
     con = sqlite3.connect(db_path)
@@ -480,7 +555,7 @@ def infill_evaluate(args, cfg, keywords):
     if N % batch_size:
         N_batch += 1
     for batch in tqdm(
-        fetch_batches(data_cur, batch_size, keys=keys), 
+        batch_generator(data_cur, batch_size, keys=keys), 
         total=N_batch, desc=f'evaluating {metric}'
     ):
         scores = critic.compute(
@@ -513,10 +588,9 @@ def infill_evaluate(args, cfg, keywords):
                     )
                 )
         con.commit()
-
-def fetch_batches(cursor, batch_size, keys=None):
+def batch_generator(cur, batch_size, keys=None):
     while True:
-        batch = cursor.fetchmany(batch_size)
+        batch = cur.fetchmany(batch_size)
         if not batch:  # No more rows to fetch
             break
         if keys:

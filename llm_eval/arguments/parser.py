@@ -85,7 +85,7 @@ def parse():
             'special locations'),
     )
     parser_is.add_argument(
-        '--from_ckpt', default=None, type=str,
+        '-p', '--path', default=None, type=str,
         help=('if continuing from a checkpoint, provide the directory '
               'with this flag'),
     )
@@ -103,7 +103,7 @@ def parse():
             'special locations'),
     )
     parser_is.add_argument(
-        '--model', default=None, type=str, required=True,
+        '-m', '--model', default=None, type=str, required=True,
         help='the model to collect data on',
     )
     parser_is.add_argument(
@@ -111,7 +111,7 @@ def parse():
         help='sets the number of samples to work on', default=None,
     )
     parser_is.add_argument(
-        '--from_ckpt', default=None, type=str,
+        '-p', '--path', default=None, type=str,
         help=('if continuing from a checkpoint, provide the directory '
               'with this flag'),
     )
@@ -129,11 +129,11 @@ def parse():
             'special locations'),
     )
     parser_is.add_argument(
-        '--metric', type=str, required=True,
+        '-m', '--metric', type=str, required=True,
         help='the metric to evaluate with',
     )
     parser_is.add_argument(
-        '--from_ckpt', default=None, type=str,
+        '-p', '--path', default=None, type=str,
         help=('if continuing from a checkpoint, provide the directory '
               'with this flag'),
     )

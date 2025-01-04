@@ -5,6 +5,8 @@ import sqlite3
 import numpy as np
 from datasets import Dataset
 from pprint import pprint
+from itertools import product
+from tabulate import tabulate
 
 from IPython.terminal.embed import InteractiveShellEmbed
 
@@ -15,11 +17,21 @@ def main(args):
     tables = list(list(zip(*cur.execute(
         'select name from sqlite_master where type="table";'
     ).fetchall()))[0])
+    try:
+        views = list(list(zip(*cur.execute(
+            'select name from sqlite_master where type="view";'
+        ).fetchall()))[0])
+    except:
+        views = []
 
     columns = dict()
     for name in tables:
         tbl_info = cur.execute(f"PRAGMA table_info({name});").fetchall()
         _, cols, _, _, _, _ = zip(*tbl_info)
+        columns[name] = list(cols)
+    for name in views:
+        view_info = cur.execute(f"PRAGMA table_info({name});").fetchall()
+        _, cols, _, _, _, _ = zip(*view_info)
         columns[name] = list(cols)
 
     metrics, = zip(*cur.execute(
@@ -28,7 +40,8 @@ def main(args):
     joinstr = '\n'
     query = (
         f"""
-        SELECT R.rowid, R.model, P.template_name, P.problem_id, P.template_id, P.sys_id, F.problem, F.answer, R.response, {', '.join([f'{met}.score' for met in metrics])}
+        CREATE VIEW IF NOT EXISTS scores AS
+        SELECT R.rowid as resp_id, R.model, R.temperature, P.template_name, P.problem_id, P.template_id, P.sys_id, F.problem, F.answer, P.prompt_text, R.response, {', '.join([f'{met}.score AS {met}' for met in metrics])}
         FROM responses R
         JOIN prompts P on R.prompt_id=P.rowid
         JOIN fitb_problems F on P.problem_id=F.rowid
@@ -36,12 +49,100 @@ def main(args):
         {joinstr.join([f'JOIN {met} on {met}.resp_id=R.rowid' for met in metrics])}
         """
     )
-    data = cur.execute(query)
+    res = cur.execute(query)
 
     keys = [
-        'resp_id', 'model', 'template_name', 'problem_id', 
-        'template_id', 'sys_id', 'problem', 'answer', 'response', 
+        'resp_id', 'model', 'temperature', 'template_name', 'problem_id', 
+        'template_id', 'sys_id', 'problem', 'answer', 'prompt_text', 
+        'response', 
     ] + list(metrics)
+
+    out_table = []
+
+    # get some list values
+    res = cur.execute('SELECT DISTINCT template_name from scores')
+    template_names, = list(zip(*res.fetchall()))
+    res = cur.execute('SELECT DISTINCT model from scores')
+    model_names, = list(zip(*res.fetchall()))
+
+    for tmplt, model_name in product(template_names, model_names):
+        # get template ids
+        res = cur.execute(f'SELECT DISTINCT template_id from scores S where S.template_name="{tmplt}"')
+        tids, = list(zip(*res.fetchall()))
+
+        # get sys_ids
+        res = cur.execute(f'SELECT DISTINCT sys_id from scores S where S.template_name="{tmplt}"')
+        sids, = list(zip(*res.fetchall()))
+
+        # get temperatures
+        res = cur.execute(f'SELECT DISTINCT temperature from scores S where S.template_name="{tmplt}"')
+        temps, = list(zip(*res.fetchall()))
+
+        for tid, sid, temp in product(tids, sids, temps):
+            res = cur.execute(
+                f"""
+                SELECT {', '.join(keys)} FROM scores S
+                WHERE S.template_name="{tmplt}" 
+                    AND S.model="{model_name}"
+                    AND S.sys_id={sid} 
+                    AND S.template_id={tid} 
+                    AND S.temperature={temp}
+                """
+            )
+            data = dict(zip(keys, zip(*res.fetchall())))
+            data_keys = list(data.keys())
+            N = len(data[data_keys[0]])
+            r1 = np.array(data['rouge1'])
+            bs = np.array(data['bertscore_f1'])
+            out_table.append({
+                'model': model_name,
+                'temperature': temp,
+                'template': tmplt,
+                'tid': tid,
+                'sid': sid,
+                'total': N,
+                'avg rouge': np.mean(r1),
+                'zeros rouge': np.sum(r1 == 0),
+                'pct zeros rouge': np.mean(r1 == 0),
+                'avg bertscore': np.mean(bs),
+                'zeros bertscore': np.sum(bs == 0),
+                'pct zeros bertscore': np.mean(bs == 0),
+            })
+    print(tabulate(out_table, headers='keys', tablefmt='github'))
+
+    out_data = Dataset.from_list(out_table)
+    out_vars = []
+    for tmplt in template_names:
+        res = cur.execute(f'SELECT DISTINCT template_id from scores S where S.template_name="{tmplt}"')
+        tids, = list(zip(*res.fetchall()))
+        res = cur.execute(f'SELECT DISTINCT sys_id from scores S where S.template_name="{tmplt}"')
+        sids, = list(zip(*res.fetchall()))
+        for tid in tids:
+            fdata = out_data.filter(
+                lambda x: x['template'] == tmplt and x['tid'] == tid
+            )
+            out_vars.append({
+                'template': tmplt,
+                'pool_by': f'tid={tid}',
+                'avg rouge': np.mean(fdata['avg rouge']),
+                'rouge var': np.var(fdata['avg rouge']),
+                'N': len(fdata),
+            })
+        for sid in sids:
+            fdata = out_data.filter(
+                lambda x: x['template'] == tmplt and x['sid'] == sid
+            )
+            out_vars.append({
+                'template': tmplt,
+                'pool_by': f'sid={sid}',
+                'avg rouge': np.mean(fdata['avg rouge']),
+                'rouge var': np.var(fdata['avg rouge']),
+                'N': len(fdata),
+            })
+    print(tabulate(out_vars, headers='keys', tablefmt='github'))
+
+
+
     
     # data = dict(zip(
     #     ['resp_id', 'problem', 'answer', 'response', 'metric', 'score'], 
