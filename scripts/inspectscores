@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import argparse
 import sqlite3
 import numpy as np
@@ -110,6 +111,7 @@ def main(args):
             })
     print(tabulate(out_table, headers='keys', tablefmt='github'))
 
+
     out_data = Dataset.from_list(out_table)
     out_vars = []
     for tmplt in template_names:
@@ -140,6 +142,11 @@ def main(args):
                 'N': len(fdata),
             })
     print(tabulate(out_vars, headers='keys', tablefmt='github'))
+
+    with open(f'{os.path.dirname(pth)}/tables.txt', 'w') as f:
+        f.write(tabulate(out_table, headers='keys', tablefmt='github'))
+        f.write('\n'*5)
+        f.write(tabulate(out_vars, headers='keys', tablefmt='github'))
 
 
 
