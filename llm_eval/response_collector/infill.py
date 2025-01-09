@@ -300,7 +300,7 @@ def infill_setup(args, cfg, keywords):
             dataset TEXT,
             ref_id BIGINT,
             text TEXT,
-            PRIMARY KEY (ref_id)
+            PRIMARY KEY (dataset, ref_id)
         );
         """
     )

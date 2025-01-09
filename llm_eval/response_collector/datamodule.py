@@ -98,7 +98,7 @@ def load_wiki(ds_info, cfg, cache, split, seed=None):
         cache_dir=cache,
     )
     train_test = wiki['train'].train_test_split(
-        test_size=20000, seed=seed
+        test_size=40000, seed=seed
     )
     test_val = train_test['test'].train_test_split(
         test_size=0.5, seed=seed
