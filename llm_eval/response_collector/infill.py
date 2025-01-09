@@ -486,7 +486,8 @@ def infill_solve(args, cfg, keywords):
         gen_fn = fetch_batches(cur, batch_size, keys=keys)
 
     model_cache = cfg.model_params.get('model_cache')
-    model = VLLM(args.model, model_cache=model_cache)
+    model_args = cfg.model_params.get(args.model, dict())
+    model = VLLM(args.model, model_cache=model_cache, **model_args)
 
     write_cur = con.cursor()
     write_cur.execute(
