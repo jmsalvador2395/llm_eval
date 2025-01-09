@@ -26,6 +26,7 @@ from llm_eval.llm import *
 from llm_eval.prompt_generator import TELeR, PromptGenerator
 from llm_eval.llm.generators.vllm import VLLM
 from llm_eval.llm.session import Session
+from .datamodule import load_data
 
 def create_problems(
     ds_name: str, 
@@ -35,19 +36,23 @@ def create_problems(
     max_words: int,
     db_file: str,
     one_of_each: bool=False,
+    cfg=None,
     **kwargs
 ):
+
+    split_tokens = cfg.infill.get('split_tokens', dict())
+    split_token = split_tokens.get(ds_name)
 
     """populates the 'fitb_problems' table"""
     if one_of_each:
         (ds_names, row_ids, answers, 
          problems, units, ns, unit_indices) = get_one_of_each_problem(
-            text, ref_id, ds_name, max_sents, max_words
+            text, ref_id, ds_name, max_sents, max_words, split_token
         )
     else:
         (ds_names, row_ids, answers, 
          problems, units, ns, unit_indices) = get_all_problems(
-            text, ref_id, ds_name, max_sents, max_words
+            text, ref_id, ds_name, max_sents, max_words, split_token
         )
 
     N = len(ds_names)
@@ -71,7 +76,9 @@ def create_problems(
     cur.close()
     con.close()
 
-def get_one_of_each_problem(text, row_id, ds_name, max_sents, max_words):
+def get_one_of_each_problem(
+        text, row_id, ds_name, max_sents, max_words, split_token=None
+    ):
     answers = []
     problems = []
     units = []
@@ -79,8 +86,13 @@ def get_one_of_each_problem(text, row_id, ds_name, max_sents, max_words):
     unit_indices = []
 
     # split into words and sentences
-    words = text.split()
-    sents = sent_tokenize(text)
+    if split_token:
+        words = text.replace(split_token, '').split()
+        sents = text.split(split_token)
+        sents = [sent.strip() for sent in sents]
+    else:
+        words = text.split()
+        sents = sent_tokenize(text)
 
     # clean the text
     clean_words = [re.sub(r"[^\w\s]+", '', x) for x in words]
@@ -135,7 +147,9 @@ def get_one_of_each_problem(text, row_id, ds_name, max_sents, max_words):
     )
 
 
-def get_all_problems(text, row_id, ds_name, max_sents, max_words):
+def get_all_problems(
+        text, row_id, ds_name, max_sents, max_words, split_token=None
+    ):
     answers = []
     problems = []
     units = []
@@ -143,8 +157,13 @@ def get_all_problems(text, row_id, ds_name, max_sents, max_words):
     unit_indices = []
 
     # split into words and sentences
-    words = text.split()
-    sents = sent_tokenize(text)
+    if split_token:
+        words = text.replace(split_token, '').split()
+        sents = text.split(split_token)
+        sents = [sent.strip() for sent in sents]
+    else:
+        words = text.split()
+        sents = sent_tokenize(text)
 
     blank = ' ______ '
     count = 0
@@ -285,35 +304,18 @@ def infill_setup(args, cfg, keywords):
         );
         """
     )
-    cur.close()
 
     # load in datasets
     #ds_names = cfg.infill['target_data']
+    ds_info = cfg.datasets
     for name in tqdm(ds_names, desc='populating source document table'):
-        cur = con.cursor()
-        name_params = cfg.datasets[name]
-        text_col = name_params['text_column']
-        split = name_params['split']
-        name_args = name_params.get('args', [])
-
-        temp_ds = datasets.load_dataset(
-            name,
-            *name_args,
-            cache_dir=cfg.infill['ds_cache']
-        )
-        temp_ds = temp_ds[split]
-        temp_ds = temp_ds.rename_column(text_col, 'text')
-        temp_ds = temp_ds.select_columns('text')
-
-        N = len(temp_ds)
+        text = load_data(name, cfg, ds_info[name])
+        N = len(text)
         cur.executemany(
             "INSERT OR IGNORE INTO source_data VALUES(?, ?, ?)",
-            zip([name]*N, range(N), temp_ds['text'])
+            zip([name]*N, range(N), text)
         )
-        cur.close()
-
-    con.commit()
-    cur = con.cursor()
+        con.commit()
 
     text_data = cur.execute(
         'SELECT dataset, ref_id, text FROM source_data'
@@ -346,6 +348,7 @@ def infill_setup(args, cfg, keywords):
         'max_words': cfg.infill['max_blank_words'],
         'max_sents': cfg.infill['max_blank_sents'],
         'one_of_each': cfg.infill['one_of_each'],
+        'cfg': cfg,
     }
 
     for el in tqdm(text_data, desc='creating fitb problems'):
@@ -374,13 +377,9 @@ def count_subsamples(cur, batch_size, limit):
     return N_batch
 
 
-def fetch_subsamples(cur, batch_size, limit, keys=None):
+def fetch_subsamples(cur, batch_size, limit, pids, keys=None):
     res = cur.execute('SELECT DISTINCT template_name from prompts')
     template_names, = list(zip(*res.fetchall()))
-    all_pids, = list(zip(*cur.execute(
-        'SELECT DISTINCT(problem_id) from prompts'
-    )))
-    pids = np.random.permutation(all_pids)[:limit]
 
     for tmplt in template_names:
         res = cur.execute(f'SELECT DISTINCT template_id from prompts P where P.template_name="{tmplt}"')
@@ -443,9 +442,41 @@ def infill_solve(args, cfg, keywords):
 
     keys = ['rowid'] + cols['prompts']
     if args.limit:
+        # check if table of selected problem ids exists
+        res = cur.execute(
+            f"""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name='sample_pids';
+            """
+        ).fetchall()
+        if res == []:
+            # create table of selected problem ids
+            all_pids, = list(zip(*cur.execute(
+                'SELECT DISTINCT(problem_id) from prompts'
+            )))
+            pids = np.random.permutation(all_pids)[:limit]
+            pids = tuple(pids.tolist())
+            res = cur.execute(
+                """
+                CREATE TABLE sample_pids (
+                    pid int
+                )
+                """
+            )
+            res = cur.executemany(
+                """
+                INSERT INTO sample_pids (pid)
+                VALUES (?)
+                """,
+                zip(pids)
+            )
+            con.commit()
+        else:
+            pids, = zip(*cur.execute(f'SELECT pid FROM sample_pids'))
+
         N_batch = count_subsamples(cur, batch_size, args.limit)
         gen_fn = fetch_subsamples(
-            cur, batch_size, args.limit, keys=keys
+            cur, batch_size, args.limit, pids, keys=keys
         )
     else:
         N, = cur.execute('select count(*) from prompts').fetchone()
@@ -454,7 +485,8 @@ def infill_solve(args, cfg, keywords):
             N_batch += 1
         gen_fn = fetch_batches(cur, batch_size, keys=keys)
 
-    model = VLLM(args.model)
+    model_cache = cfg.model_params.get('model_cache')
+    model = VLLM(args.model, model_cache=model_cache)
 
     write_cur = con.cursor()
     write_cur.execute(
@@ -527,6 +559,7 @@ def infill_evaluate(args, cfg, keywords):
         "INSERT OR IGNORE INTO metric_names VALUES (?)", 
         zip(table_names)
     )
+    con.commit()
 
     for table_name in table_names:
         cur.execute(
@@ -558,11 +591,14 @@ def infill_evaluate(args, cfg, keywords):
         batch_generator(data_cur, batch_size, keys=keys), 
         total=N_batch, desc=f'evaluating {metric}'
     ):
+        # TODO check if samples exist before calculating scores
+
         scores = critic.compute(
             predictions=batch['response'],
             references=batch['answer'],
             **kwargs
         )
+
         if metric == 'bertscore':
             for table_name, met in zip(table_names, met_cols):
                 cur.executemany(
@@ -575,6 +611,7 @@ def infill_evaluate(args, cfg, keywords):
                         scores[met]
                     )
                 )
+                con.commit()
         elif metric == 'rouge':
             for table_name in table_names:
                 cur.executemany(
@@ -587,7 +624,7 @@ def infill_evaluate(args, cfg, keywords):
                         scores[table_name]
                     )
                 )
-        con.commit()
+                con.commit()
 def batch_generator(cur, batch_size, keys=None):
     while True:
         batch = cur.fetchmany(batch_size)

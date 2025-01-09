@@ -1,7 +1,7 @@
 datasets:
   all_sides: 
     type: "json"
-    path: "{{project_root}}/data/all_sides/test.json"
+    path: "{{project_root}}/data/ds/all_sides/test.json"
     aliases:
       Left: doc1
       Right: doc2
@@ -12,7 +12,7 @@ datasets:
       - "AllSides_Intersection"
   privacy_policy: 
     type: "csv"
-    path: "{{project_root}}/data/privacy_policy/3p_data.csv"
+    path: "{{project_root}}/data/ds/privacy_policy/3p_data.csv"
     aliases:
       Company_1: doc1
       Company_2: doc2
@@ -28,6 +28,29 @@ datasets:
     split: "test"
     args:
       - "1.0.0"
+  sind:
+    path: "{{project_root}}/data/ds/sind"
+    file_map:
+      train: "train.tsv"
+      dev: "dev.tsv"
+      test: "test.tsv"
+    text_column: "text"
+    split:
+      - "test"
+      - "dev"
+  roc:
+    path: "{{project_root}}/data/ds/ROCStories"
+    text_column: "text"
+    split: 'test'
+  wikipedia:
+    test_size: 10000
+    split:
+      - "test"
+    text_column: "text"
+    args:
+      - "20231101.en"
+    min_sents: 10
+
     
   acl_abstracts:
     type: "json"
@@ -35,13 +58,19 @@ datasets:
     text_column: "text"
 
 infill:
+  seed: 100
   ds_cache: "{{project_root}}/data/cache"
   save_dir: "{{project_root}}/data/results"
   batch_size: 1000
   prompt_templates:
   target_data:
-    - "stanfordnlp/sst2"
+    - "roc"
+    - "sind"
     - "abisee/cnn_dailymail"
+    - "wikipedia"
+  split_tokens:
+    roc: "<eos>"
+    sind: "<eos>"
   num_proc: 8
   chunk_size: 32
   prompt_templates:
@@ -60,9 +89,9 @@ infill:
     rouge:
       use_aggregator: False
   temps:
-    - 0.9
-    - 0.8
     - 0.7
+    - 0.5
+    - 0.3
 
 resp_coll:
   ds_cache: "{{project_root}}/data/cache"
@@ -96,9 +125,6 @@ eval:
 model_params:
   model_cache: "{{project_root}}/data/llm_cache"
   max_length: 4096
-  num_output_tokens: 512
-  temperature: 0.2
-  dtype: "auto"
 
 unit_test: 
   cases:
