@@ -16,6 +16,7 @@ from tqdm import tqdm
 from nltk import sent_tokenize
 from typing import List
 import re
+import time
 
 # local imports
 from llm_eval.utils import (
@@ -232,13 +233,17 @@ def infill_setup(args, cfg, keywords):
     db_file = f'{save_loc}/data.db'
     db_is_new = not files.path_exists(db_file)
 
+    
+    display.info('connecting to database')
     con = sqlite3.connect(db_file)
     cur = con.cursor()
+    display.ok('')
 
     ds_names = cfg.infill['target_data']
 
     # Determine if evaluation data configuration has changed
     if db_is_new:
+        display.info('saving contents of cfg to database')
         skip = True
         res = cur.execute(
             """
@@ -258,6 +263,7 @@ def infill_setup(args, cfg, keywords):
             );
             """
         )
+        display.ok('')
     # if dataset is not new, check for changes to configuration
     else:
         res = cur.execute('SELECT * FROM cfg').fetchone()
@@ -293,6 +299,7 @@ def infill_setup(args, cfg, keywords):
             display.done('Data already exists')
             return 
 
+    display.info('creating table `source_data`')
     cur = con.cursor()
     res = cur.execute(
         """
@@ -304,6 +311,7 @@ def infill_setup(args, cfg, keywords):
         );
         """
     )
+    display.ok('')
 
     # load in datasets
     #ds_names = cfg.infill['target_data']
@@ -360,14 +368,26 @@ def infill_setup(args, cfg, keywords):
     gen.prepare_infill_data(keys, db_path=db_file)
 
 def count_subsamples(cur, batch_size, limit):
-    res = cur.execute('SELECT DISTINCT template_name from prompts')
-    template_names, = list(zip(*res.fetchall()))
+    start = time.time()
+    res = cur.execute(
+        'SELECT DISTINCT template_name FROM prompts'
+    ).fetchall()
+    template_names, = list(zip(*res))
+    stop = time.time()
+    display.info(f'unique template_name query took {stop-start:.02f} seconds')
     N = 0
     for tmplt in template_names:
+        start = time.time()
         res = cur.execute(f'SELECT DISTINCT template_id from prompts P where P.template_name="{tmplt}"')
         tids, = list(zip(*res.fetchall()))
+        stop = time.time()
+        display.info(f'unique template_id query took {stop-start:.02f} seconds')
+
+        start = time.time()
         res = cur.execute(f'SELECT DISTINCT sys_id from prompts P where P.template_name="{tmplt}"')
         sids, = list(zip(*res.fetchall()))
+        stop = time.time()
+        display.info(f'unique sys_id query took {stop-start:.02f} seconds')
         N += len(tids)*len(sids)*limit
         print(f'{tmplt}, tids: {len(tids)}, sids: {len(sids)}')
 
@@ -422,6 +442,7 @@ def infill_solve(args, cfg, keywords):
     takes the problems created by infill_setup() and runs inference on
     a given LLM to try and solve the task.
     """
+    display.info(f'running infill_solve using {args.model}')
     batch_size = cfg.infill['batch_size']
     limit = args.limit
 
@@ -442,6 +463,7 @@ def infill_solve(args, cfg, keywords):
 
     keys = ['rowid'] + cols['prompts']
     if args.limit:
+        display.info('fetching subsample IDs')
         # check if table of selected problem ids exists
         res = cur.execute(
             f"""
@@ -474,7 +496,9 @@ def infill_solve(args, cfg, keywords):
         else:
             pids, = zip(*cur.execute(f'SELECT pid FROM sample_pids'))
 
+        print(f'counting prompt variations')
         N_batch = count_subsamples(cur, batch_size, args.limit)
+        print(f'creating generator function')
         gen_fn = fetch_subsamples(
             cur, batch_size, args.limit, pids, keys=keys
         )
@@ -485,6 +509,7 @@ def infill_solve(args, cfg, keywords):
             N_batch += 1
         gen_fn = fetch_batches(cur, batch_size, keys=keys)
 
+    display.info('loading model: {args.model}')
     model_cache = cfg.model_params.get('model_cache')
     model_args = cfg.model_params.get(args.model, dict())
     model = VLLM(args.model, model_cache=model_cache, **model_args)
@@ -503,8 +528,8 @@ def infill_solve(args, cfg, keywords):
         """
     )
 
+    display.info('begin collecting responses')
     temps = cfg.infill.get('temps', [1.0])
-
     for batch, temp in tqdm(
         product(gen_fn, temps), 
         total=N_batch*len(temps), 

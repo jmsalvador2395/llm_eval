@@ -16,8 +16,6 @@ scipy
 sentence-transformers
 simple_term_menu
 tensorboard
-tensorflow
-tensorflow_hub
 tokenizers
 torch
 tqdm
