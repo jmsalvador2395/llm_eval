@@ -317,7 +317,7 @@ def infill_setup(args, cfg, keywords):
     #ds_names = cfg.infill['target_data']
     ds_info = cfg.datasets
     for name in tqdm(ds_names, desc='populating source document table'):
-        text = load_data(name, cfg, ds_info[name])
+        text = load_data(name, cfg, ds_info[name], args.limit)
         N = len(text)
         cur.executemany(
             "INSERT OR IGNORE INTO source_data VALUES(?, ?, ?)",
@@ -366,6 +366,61 @@ def infill_setup(args, cfg, keywords):
             'unit', 'n', 'unit_idx']
     gen = PromptGenerator(cfg, 'infill')
     gen.prepare_infill_data(keys, db_path=db_file)
+    display.done(f'database file saved to: {db_file}')
+
+def count_picked_templates(cur, picked_templates, batch_size):
+    N_batch = 0
+    for template, picked_ids in tqdm(
+        picked_templates.items(), total=len(picked_templates)
+    ):
+        N_sub = 0
+        total = 0
+        for sid, tid in zip(picked_ids['sids'], picked_ids['tids']):
+            count, = cur.execute(
+                f"""
+                SELECT count(*) FROM prompts 
+                WHERE 
+                    sys_id={sid} 
+                    AND template_id={tid}
+                    AND template_name="{template}"
+                """
+            ).fetchone()
+            total += count
+            N_sub += count
+            N_batch += count // batch_size
+            if count % batch_size:
+                N_batch += 1
+
+        display.info(
+            f'number of prompts picked for `{template}`: {N_sub}'
+        )
+    display.info(f'prompts to process: {total}')
+    return N_batch
+
+def fetch_picked_templates(
+        cur, picked_templates, batch_size, keys=None
+    ):
+    for template, picked_ids in picked_templates.items():
+        N_sub = 0
+        for sid, tid in zip(picked_ids['sids'], picked_ids['tids']):
+            res = cur.execute(
+                f"""
+                SELECT {', '.join(keys)} FROM prompts 
+                WHERE 
+                    sys_id={sid} 
+                    AND template_id={tid}
+                    AND template_name="{template}"
+                """
+            )
+            while True:
+                batch = res.fetchmany(batch_size)
+                if not batch:
+                    break
+                if keys:
+                    yield dict(zip(keys, zip(*batch)))
+                else:
+                    yield batch
+
 
 def count_subsamples(cur, batch_size, limit):
     start = time.time()
@@ -391,6 +446,7 @@ def count_subsamples(cur, batch_size, limit):
         N += len(tids)*len(sids)*limit
         print(f'{tmplt}, tids: {len(tids)}, sids: {len(sids)}')
 
+    display.info(f'prompts to process: {N}')
     N_batch = N // batch_size
     if N % batch_size:
         N_batch += 1
@@ -502,12 +558,29 @@ def infill_solve(args, cfg, keywords):
         gen_fn = fetch_subsamples(
             cur, batch_size, args.limit, pids, keys=keys
         )
+    elif args.picked_templates:
+        picked_templates = (
+            cfg.infill['picked_templates'].get(args.model)
+        )
+        if picked_templates is None:
+            display.error(
+                f'config does not contain picked templates for '
+                f'model `{args.model}`'
+            )
+            raise ValueError(f'')
+        N_batch = count_picked_templates(
+            cur, picked_templates, batch_size
+        )
+        gen_fn = fetch_picked_templates(
+            cur, picked_templates, batch_size, keys=keys
+        )
     else:
         N, = cur.execute('select count(*) from prompts').fetchone()
         N_batch = N // batch_size
         if N % batch_size:
             N_batch += 1
         gen_fn = fetch_batches(cur, batch_size, keys=keys)
+        display.info(f'prompts to process: {N}')
 
     display.info(f'loading model: {args.model}')
     model_cache = cfg.model_params.get('model_cache')

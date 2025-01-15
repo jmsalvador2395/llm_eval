@@ -23,6 +23,7 @@ class VLLM(Generator):
             max_model_len=self.max_length,
             enforce_eager=True,
             worker_use_ray=True,
+            tensor_parallel_size=self.tensor_parallel_size
         )
 
     @wraps(Generator.generate)

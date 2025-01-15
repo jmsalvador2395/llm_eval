@@ -5,7 +5,7 @@ from nltk import sent_tokenize
 
 from llm_eval.utils import files
 
-def load_data(name, cfg, ds_info):
+def load_data(name, cfg, ds_info, limit=None):
 
     text_col = ds_info['text_column']
     split = ds_info['split']
@@ -16,7 +16,7 @@ def load_data(name, cfg, ds_info):
 
     if name in special_sets:
         temp_ds = load_special_set(
-            name, ds_info, cfg, cache, seed, split
+            name, ds_info, cfg, cache, seed, split, limit=None
         )
     else:
         name_args = ds_info.get('args', [])
@@ -34,9 +34,13 @@ def load_data(name, cfg, ds_info):
         else:
             temp_ds = temp_ds[split]
 
+    # if limit is specified, shuffle and then randomly `limit` elements
+    if limit:
+        temp_ds = temp_ds.shuffle(seed=seed).select(range(limit))
+
     return temp_ds[text_col]
 
-def load_special_set(name, ds_info, cfg, cache, seed, split):
+def load_special_set(name, ds_info, cfg, cache, seed, split, limit=None):
     match name:
         case 'sind':
             ds = load_sind(ds_info, cfg, cache, split, seed)

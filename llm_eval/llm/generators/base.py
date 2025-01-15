@@ -18,6 +18,7 @@ class Generator:
         max_length: int=4096,
         seed: Optional[int]=None,
         model_cache: Optional[str]=None,
+        tensor_parallel_size: int=1,
         **kwargs,
     ):
         self.model_name = model_name
@@ -30,6 +31,7 @@ class Generator:
         self.max_length = max_length
         self.seed = seed
         self.model_cache = model_cache
+        self.tensor_parallel_size = tensor_parallel_size
 
         if session_type not in ['chat', 'chat_custom', 'standard']:
             raise ValueError(

@@ -89,6 +89,10 @@ def parse():
         help=('if continuing from a checkpoint, provide the directory '
               'with this flag'),
     )
+    parser_is.add_argument(
+        '-l', '--limit', default=None, type=int,
+        help=('number of samples to use from each source dataset'),
+    )
 
     # subparser for solving the infilling problems
     parser_is = subparser.add_parser('infill_solve')
@@ -114,6 +118,11 @@ def parse():
         '-p', '--path', default=None, type=str,
         help=('if continuing from a checkpoint, provide the directory '
               'with this flag'),
+    )
+    parser_is.add_argument(
+        '-pt', '--picked_templates', default=False, action='store_true',
+        help=('collects responses with the explicitly chosen templates '
+              'as specified in the config'),
     )
 
     # subparser for evaluating the infilling responses
