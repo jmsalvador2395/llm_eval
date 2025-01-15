@@ -509,7 +509,7 @@ def infill_solve(args, cfg, keywords):
             N_batch += 1
         gen_fn = fetch_batches(cur, batch_size, keys=keys)
 
-    display.info('loading model: {args.model}')
+    display.info(f'loading model: {args.model}')
     model_cache = cfg.model_params.get('model_cache')
     model_args = cfg.model_params.get(args.model, dict())
     model = VLLM(args.model, model_cache=model_cache, **model_args)
@@ -530,11 +530,20 @@ def infill_solve(args, cfg, keywords):
 
     display.info('begin collecting responses')
     temps = cfg.infill.get('temps', [1.0])
-    for batch, temp in tqdm(
-        product(gen_fn, temps), 
+    start_point, = cur.execute(
+        f'SELECT count(*) FROM responses WHERE model="{args.model}"'
+    ).fetchone()
+    start_point = start_point // batch_size
+
+    for step, (batch, temp) in tqdm(
+        enumerate(product(gen_fn, temps)), 
         total=N_batch*len(temps), 
         desc='generating responses'
     ):
+        # skip until you get to start point
+        if step < start_point:
+            continue
+
         sessions = [
             Session(system_role=sys_role) 
             for sys_role in batch['sys_text']

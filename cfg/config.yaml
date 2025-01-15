@@ -80,7 +80,7 @@ infill:
     fitb_l2: "{{project_root}}/cfg/prompts/fitb_l2.yaml" 
     fitb_l3: "{{project_root}}/cfg/prompts/fitb_l3.yaml" 
     fitb_l4: "{{project_root}}/cfg/prompts/fitb_l4.yaml" 
-  max_blank_sents: 5
+  max_blank_sents: 3
   max_blank_words: 0
   one_of_each: True
   kwargs:
@@ -92,6 +92,23 @@ infill:
     - 0.7
     - 0.5
     - 0.3
+  picked_templates:
+    meta-llama/Llama-3.2-1B-Instruct:
+      fitb_l0:
+        tids: [0]
+        sids: [5, 2]
+      fitb_l1:
+        tids: [2, 3]
+        sids: [5, 2]
+      fitb_l2:
+        tids: [1, 2]
+        sids: [5, 1]
+      fitb_l3:
+        tids: [1, 2]
+        sids: [5, 2]
+      fitb_l4:
+        tids: [5, 1]
+        sids: [5, 2]
 
 resp_coll:
   ds_cache: "{{project_root}}/data/cache"
@@ -129,7 +146,7 @@ model_params:
   meta-llama/Llama-3.2-3B-Instruct:
     max_length: 48000
   meta-llama/Llama-3.1-8B-Instruct:
-    max_length: 48000
+    max_length: 4000
 
 unit_test: 
   cases:

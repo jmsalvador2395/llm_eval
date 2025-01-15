@@ -94,6 +94,16 @@ class PromptGenerator:
             }
             for sys_id, tmplt_id in combos
         ]
+        res = cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS combos (
+                template_name text,
+                template_id int,
+                sys_id int,
+                PRIMARY KEY (template_name, template_id, sys_id)
+            )
+            """
+        )
 
         N = cur.execute(
             'select count(*) from fitb_problems'

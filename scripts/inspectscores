@@ -8,6 +8,7 @@ from datasets import Dataset
 from pprint import pprint
 from itertools import product
 from tabulate import tabulate
+from tqdm import tqdm
 
 from IPython.terminal.embed import InteractiveShellEmbed
 
@@ -31,8 +32,8 @@ def main(args):
         _, cols, _, _, _, _ = zip(*tbl_info)
         columns[name] = list(cols)
     for name in views:
-        view_info = cur.execute(f"PRAGMA table_info({name});").fetchall()
-        _, cols, _, _, _, _ = zip(*view_info)
+        vw_info = cur.execute(f"PRAGMA table_info({name});").fetchall()
+        _, cols, _, _, _, _ = zip(*vw_info)
         columns[name] = list(cols)
 
     metrics, = zip(*cur.execute(
@@ -42,20 +43,27 @@ def main(args):
     query = (
         f"""
         CREATE VIEW IF NOT EXISTS scores AS
-        SELECT R.rowid as resp_id, R.model, R.temperature, P.template_name, P.problem_id, P.template_id, P.sys_id, F.problem, F.answer, P.prompt_text, R.response, {', '.join([f'{met}.score AS {met}' for met in metrics])}
+        SELECT 
+            R.rowid AS resp_id, R.model, R.temperature, P.template_name, 
+            P.problem_id, P.template_id, P.sys_id, F.problem, F.answer, 
+            P.prompt_text, R.response, 
+            {', '.join([f'{met}.score AS {met}' for met in metrics])}
         FROM responses R
         JOIN prompts P on R.prompt_id=P.rowid
         JOIN fitb_problems F on P.problem_id=F.rowid
         JOIN source_data C on F.ref_id=C.rowid
-        {joinstr.join([f'JOIN {met} on {met}.resp_id=R.rowid' for met in metrics])}
+        {joinstr.join([
+            f'JOIN {met} on {met}.resp_id=R.rowid' 
+            for met in metrics
+        ])}
         """
     )
     res = cur.execute(query)
 
     keys = [
-        'resp_id', 'model', 'temperature', 'template_name', 'problem_id', 
-        'template_id', 'sys_id', 'problem', 'answer', 'prompt_text', 
-        'response', 
+        'resp_id', 'model', 'temperature', 'template_name', 
+        'problem_id', 'template_id', 'sys_id', 'problem', 'answer', 
+        'prompt_text', 'response', 
     ] + list(metrics)
 
     out_table = []
@@ -66,20 +74,38 @@ def main(args):
     res = cur.execute('SELECT DISTINCT model from scores')
     model_names, = list(zip(*res.fetchall()))
 
-    for tmplt, model_name in product(template_names, model_names):
+    model_templates = list(product(template_names, model_names))
+    for tmplt, model_name in tqdm(model_templates, position=0):
         # get template ids
-        res = cur.execute(f'SELECT DISTINCT template_id from scores S where S.template_name="{tmplt}"')
+        res = cur.execute(
+            f"""
+            SELECT DISTINCT template_id FROM scores S 
+            WHERE S.template_name="{tmplt}"
+            """
+        )
         tids, = list(zip(*res.fetchall()))
 
         # get sys_ids
-        res = cur.execute(f'SELECT DISTINCT sys_id from scores S where S.template_name="{tmplt}"')
+        res = cur.execute(
+            f"""
+            SELECT DISTINCT sys_id FROM scores S 
+            WHERE S.template_name="{tmplt}"
+            """
+        )
+        
         sids, = list(zip(*res.fetchall()))
 
         # get temperatures
-        res = cur.execute(f'SELECT DISTINCT temperature from scores S where S.template_name="{tmplt}"')
+        res = cur.execute(
+            f"""
+            SELECT DISTINCT temperature FROM scores S 
+            WHERE S.template_name="{tmplt}"
+            """
+        )
         temps, = list(zip(*res.fetchall()))
 
-        for tid, sid, temp in product(tids, sids, temps):
+        combos = list(product(tids, sids, temps))
+        for tid, sid, temp in tqdm(combos, position=1, leave=False):
             res = cur.execute(
                 f"""
                 SELECT {', '.join(keys)} FROM scores S
@@ -93,8 +119,6 @@ def main(args):
             data = dict(zip(keys, zip(*res.fetchall())))
             data_keys = list(data.keys())
             N = len(data[data_keys[0]])
-            r1 = np.array(data['rouge1'])
-            bs = np.array(data['bertscore_f1'])
             out_table.append({
                 'model': model_name,
                 'temperature': temp,
@@ -102,44 +126,129 @@ def main(args):
                 'tid': tid,
                 'sid': sid,
                 'total': N,
-                'avg rouge': np.mean(r1),
-                'zeros rouge': np.sum(r1 == 0),
-                'pct zeros rouge': np.mean(r1 == 0),
-                'avg bertscore': np.mean(bs),
-                'zeros bertscore': np.sum(bs == 0),
-                'pct zeros bertscore': np.mean(bs == 0),
             })
+            r1 = data.get('rouge1')
+            if r1:
+                r1 = np.array(r1)
+                out_table[-1].update({
+                    'avg rouge': float(np.mean(r1)),
+                    'zeros rouge': float(np.sum(r1 == 0)),
+                    'pct zeros rouge': float(np.mean(r1 == 0)),
+                })
+            bs = data.get('bertscore_f1')
+            if bs:
+                bs = np.array(bs)
+                out_table[-1].update({
+                    'avg bertscore': float(np.mean(bs)),
+                    'zeros bertscore': float(np.sum(bs == 0)),
+                    'pct zeros bertscore': float(np.mean(bs == 0)),
+                })
     print(tabulate(out_table, headers='keys', tablefmt='github'))
 
+    static_keys = set({
+        'model', 'temperature', 'template', 'tid', 'sid', 'total',
+    })
+    met_keys = set(out_table[0].keys()) - static_keys
+    met_cols = list(static_keys) + list(met_keys)
+    met_cols = list(map(lambda x: x.replace(' ', '_'), met_cols))
+    met_col_names = set(
+        {k.replace(' ', '_') + ' double' for k in met_keys}
+    )
+    col_str = ',\n'.join(met_col_names)
+    mcon = sqlite3.connect(':memory:')
+    mcur = mcon.cursor()
+    mcur.execute(
+        f"""
+        CREATE TABLE averages (
+            model text,
+            temperature double,
+            template text,
+            tid int,
+            sid int,
+            total int,
+            {col_str}
+        )
+        """
+    )
+    in_cols = ', '.join([
+        k.replace(' ', '_') for k in out_table[0].keys()
+    ])
+    mcur.executemany(
+        f"""
+        INSERT INTO averages ({in_cols})
+        VALUES (?, ?, ?, ?, ?, ?, {', '.join(['?']*len(met_col_names))})
+        """, 
+        map(lambda x: tuple(x.values()), out_table)
+    )
+    mcon.commit()
 
-    out_data = Dataset.from_list(out_table)
+
+
     out_vars = []
-    for tmplt in template_names:
-        res = cur.execute(f'SELECT DISTINCT template_id from scores S where S.template_name="{tmplt}"')
+    template_model_names = list(product(template_names, model_names))
+    for tmplt, mdl in tqdm(template_model_names, position=0):
+        # get tids
+        res = cur.execute(
+            f"""
+            SELECT DISTINCT template_id FROM scores S 
+            WHERE S.template_name="{tmplt}" AND S.model="{mdl}"
+            """
+        )
         tids, = list(zip(*res.fetchall()))
-        res = cur.execute(f'SELECT DISTINCT sys_id from scores S where S.template_name="{tmplt}"')
+
+        # get sids
+        res = cur.execute(
+            f"""
+            SELECT DISTINCT sys_id FROM scores S 
+            WHERE S.template_name="{tmplt}" AND S.model="{mdl}"
+            """
+        )
         sids, = list(zip(*res.fetchall()))
-        for tid in tids:
-            fdata = out_data.filter(
-                lambda x: x['template'] == tmplt and x['tid'] == tid
-            )
+
+        # get temps
+        res = cur.execute(
+            f"""
+            SELECT DISTINCT temperature FROM scores S 
+            WHERE S.template_name="{tmplt}"
+            """
+        )
+        temps, = list(zip(*res.fetchall()))
+
+        for tid, temp in product(tids, temps):
+            rouge_scores, = zip(*cur.execute(
+                f"""
+                SELECT rouge1 FROM scores 
+                WHERE 
+                    template_name="{tmplt}" 
+                    AND template_id={tid} 
+                    AND temperature={temp}
+                """
+            ))
             out_vars.append({
                 'template': tmplt,
+                'temperature': temp,
                 'pool_by': f'tid={tid}',
-                'avg rouge': np.mean(fdata['avg rouge']),
-                'rouge var': np.var(fdata['avg rouge']),
-                'N': len(fdata),
+                'avg rouge': float(np.mean(rouge_scores)),
+                'rouge var': float(np.var(rouge_scores)),
+                'N': len(rouge_scores),
             })
-        for sid in sids:
-            fdata = out_data.filter(
-                lambda x: x['template'] == tmplt and x['sid'] == sid
-            )
+        for sid, temp in product(sids, temps):
+            rouge_scores, = zip(*cur.execute(
+                f"""
+                SELECT rouge1 FROM scores
+                WHERE 
+                    template_name="{tmplt}" 
+                    AND sys_id={sid} 
+                    AND temperature={temp}
+                """
+            ))
             out_vars.append({
                 'template': tmplt,
+                'temperature': temp,
                 'pool_by': f'sid={sid}',
-                'avg rouge': np.mean(fdata['avg rouge']),
-                'rouge var': np.var(fdata['avg rouge']),
-                'N': len(fdata),
+                'avg rouge': float(np.mean(rouge_scores)),
+                'rouge var': float(np.var(rouge_scores)),
+                'N': len(rouge_scores),
             })
     print(tabulate(out_vars, headers='keys', tablefmt='github'))
 
@@ -147,17 +256,6 @@ def main(args):
         f.write(tabulate(out_table, headers='keys', tablefmt='github'))
         f.write('\n'*5)
         f.write(tabulate(out_vars, headers='keys', tablefmt='github'))
-
-
-
-    
-    # data = dict(zip(
-    #     ['resp_id', 'problem', 'answer', 'response', 'metric', 'score'], 
-    #     zip(*data_cur.fetchall())
-    # ))
-
-    # ds = Dataset.from_dict(data)
-
     
     ipshell = InteractiveShellEmbed()
     ipshell()
