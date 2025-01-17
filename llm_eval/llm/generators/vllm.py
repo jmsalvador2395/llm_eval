@@ -16,14 +16,17 @@ class VLLM(Generator):
         super(VLLM, self).__init__(*args, **kwargs)
 
         self.tok = AutoTokenizer.from_pretrained(self.model_name)
+        if kwargs.get('model_cache'):
+            kwargs.pop('model_cache')
         self.model = LLM(
             model=self.model_name,
             seed=int(time.time()),
             download_dir=self.model_cache,
-            max_model_len=self.max_length,
+            #max_model_len=self.max_length,
             enforce_eager=True,
             worker_use_ray=True,
-            tensor_parallel_size=self.tensor_parallel_size
+            tensor_parallel_size=self.tensor_parallel_size,
+            **kwargs,
         )
 
     @wraps(Generator.generate)

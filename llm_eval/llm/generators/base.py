@@ -9,6 +9,7 @@ class Generator:
     """
     def __init__(self, 
         model_name: str, 
+        model_cache: Optional[str]=None,
         session_type: str='chat',
         top_p: float=1.0,
         top_k: int=-1,
@@ -17,7 +18,6 @@ class Generator:
         sampling: bool=True,
         max_length: int=4096,
         seed: Optional[int]=None,
-        model_cache: Optional[str]=None,
         tensor_parallel_size: int=1,
         **kwargs,
     ):

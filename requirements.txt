@@ -27,3 +27,4 @@ spacy
 einops
 tabulate
 #flash-attn
+bitsandbytes
