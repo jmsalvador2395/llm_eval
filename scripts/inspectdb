@@ -4,6 +4,9 @@ import argparse
 import sqlite3
 import numpy as np
 import time
+import json
+from tqdm import tqdm
+from transformers import AutoTokenizer
 
 from pprint import pprint
 from IPython.terminal.embed import InteractiveShellEmbed
@@ -21,13 +24,173 @@ def main(args):
         tbl_info = cur.execute(f"PRAGMA table_info({name});").fetchall()
         _, cols, _, _, _, _ = zip(*tbl_info)
         columns[name] = list(cols)
+    models = (
+        'meta-llama/Llama-3.1-8B-Instruct',
+        'meta-llama/Llama-3.2-1B-Instruct',
+        'meta-llama/Llama-3.2-3B-Instruct',
+    )
+
+    prompt_stats, prompt_lengths = count_prompt_tokens(cur)
+
+    resp_attr, lengths, lengths_no_ast, resp_lengths = (
+        count_response_tokens(cur, 1000)
+    )
+
+    cutoffs = [20_000, 25_000, 30_000]
+    info = dict()
+    for model in models:
+        info[model] = {
+            cutoff: np.sum(lengths[model] >= cutoff)
+            for cutoff in cutoffs
+        }
     
     ipshell = InteractiveShellEmbed()
     ipshell()
+
+def count_prompt_tokens(cur, batch_size=1000):
+
+    tok = AutoTokenizer.from_pretrained(
+        'meta-llama/Llama-3.1-8B-Instruct'
+    )
+    template_names, = zip(*cur.execute(
+        f'SELECT DISTINCT(template_name) FROM prompts'
+    ))
+    prompt_stats = dict()
+    lengths = dict()
+    for tmplt in tqdm(template_names, position=0):
+        prompt_stats[tmplt] = dict()
+        lengths[tmplt] = []
+        N, = cur.execute(
+            f"""
+            SELECT COUNT(*) FROM prompts P 
+            WHERE template_name="{tmplt}"
+            """
+        ).fetchone()
+        N_batch = N // batch_size
+        if N % batch_size:
+            N_batch += 1
+        read_cur = cur.execute(
+            f"""
+            SELECT P.sys_text, P.prompt_text FROM Prompts P 
+            WHERE template_name="{tmplt}"
+            """
+        )
+        keys = ['sys_text', 'prompt_text']
+        for batch in tqdm(
+            cur_gen(read_cur, batch_size), total=N_batch, 
+            position=1, leave=False,
+        ):
+            # format chat
+            prompts = [
+                [{'role': 'system', 'content': sys_text},
+                 {'role': 'user', 'content': prompt_text}]
+                for sys_text, prompt_text in batch
+            ]
+
+            # convert to tokens
+            tokens = tok.apply_chat_template(prompts)
+
+            # compute lengths
+            lengths[tmplt] += list(map(len, tokens))
+
+        lengths[tmplt] = np.array(lengths[tmplt])
+        prompt_stats[tmplt] = {
+            'max': int(np.max(lengths[tmplt])),
+            'min': int(np.min(lengths[tmplt])),
+            'mean': float(np.mean(lengths[tmplt])),
+        }
+    print(f'******** TOKEN COUNTS ********')
+    print(json.dumps(prompt_stats, indent=4))
+    return prompt_stats, lengths
+
+def count_response_tokens(cur, batch_size=1000):
+    models, = zip(*cur.execute(
+        f'SELECT DISTINCT(model) FROM responses'
+    ).fetchall())
+    resp_attr = {model: dict() for model in models}
+    lengths = {model: [] for model in models}
+    lengths_no_ast = {model: [] for model in models}
+    resp_lengths = {model: [] for model in models}
+    for model in tqdm(models, position=0):
+
+        tok = AutoTokenizer.from_pretrained(model)
+        N, = cur.execute(
+            f"""
+            SELECT COUNT(*) FROM responses R, prompts P
+            WHERE P.rowid=R.prompt_id and R.model="{model}"
+            """
+        ).fetchone()
+        N_batch = N // batch_size
+        if N % batch_size:
+            N_batch += 1
+        read_cur = cur.execute(
+            f"""
+            SELECT P.sys_text, P.prompt_text, R.response 
+            FROM Prompts P, responses R 
+            WHERE P.rowid=R.prompt_id and R.model="{model}"
+            """
+        )
+        keys = ['sys_text', 'prompt_text', 'response']
+        for batch in tqdm(
+            cur_gen(read_cur, batch_size), total=N_batch, 
+            position=1, leave=False,
+        ):
+            sys_text, prompt_text, response = zip(*batch)
+            # format chat
+            chats = [
+                [{'role': 'system', 'content': sys_text},
+                 {'role': 'user', 'content': prompt_text},
+                 {'role': 'assistant', 'content': response}]
+                 for sys_text, prompt_text, response in batch
+            ]
+            chats_no_ast = [
+                [{'role': 'system', 'content': sys_text},
+                 {'role': 'user', 'content': prompt_text}]
+                 for sys_text, prompt_text, response in batch
+            ]
+
+            # convert to tokens
+            tokens = tok.apply_chat_template(chats)
+            tokens_no_ast = tok.apply_chat_template(chats_no_ast)
+            resp_tokens = tok(
+                response, add_special_tokens=False
+            )['input_ids']
+
+            # compute lengths
+            lengths[model] += list(map(len, tokens))
+            lengths_no_ast[model] += list(map(len, tokens_no_ast))
+            resp_lengths[model] += list(map(len, resp_tokens))
+
+        lengths[model] = np.array(lengths[model])
+        lengths_no_ast[model] = np.array(lengths_no_ast[model])
+        resp_lengths[model] = np.array(resp_lengths[model])
+        resp_attr[model] = {
+            'max': int(np.max(lengths[model])),
+            'max_no_ast': int(np.max(lengths_no_ast[model])),
+            'min': int(np.min(lengths[model])),
+            'min_no_ast': int(np.min(lengths_no_ast[model])),
+            'mean': float(np.mean(lengths[model])),
+            'mean_no_ast': float(np.mean(lengths_no_ast[model])),
+            'response_max': int(np.max(resp_lengths[model])),
+            'response_min': int(np.min(resp_lengths[model])),
+            'response_mean': float(np.mean(resp_lengths[model])),
+        }
+    print(f'******** TOKEN COUNTS ********')
+    print(json.dumps(resp_attr, indent=4))
+    return resp_attr, lengths, lengths_no_ast, resp_lengths
         
 
+def cur_gen(cur, batch_size=1000, keys=None):
+    while True:
+        batch = cur.fetchmany(batch_size)
+        if not batch:  # No more rows to fetch
+            break
+        if keys:
+            yield dict(zip(keys, zip(*batch)))
+        else:
+            yield batch
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--path', type=str, required=True)
+    parser.add_argument('path', type=str)
     args = parser.parse_args()
     main(args)
