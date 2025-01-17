@@ -40,6 +40,20 @@ def main(args):
         _, cols, _, _, _, _ = zip(*vw_info)
         columns[name] = list(cols)
     
+    kwargs = {
+        "meta-llama/Llama-3.1-8B-Instruct": {
+        },
+        "meta-llama/Llama-3.2-1B-Instruct": {
+        },
+        "meta-llama/Llama-3.2-3B-Instruct": {
+        },
+        "meta-llama/Llama-3.3-70B-Instruct": {
+            "tensor_parallel_size": 2,
+            "quantization": "bitsandbytes",
+            "load_format": "bitsandbytes",
+            "trust_remote_code": True,
+        },
+    }
     # load model
     keys = columns['prompts']
     llm = LLM(
@@ -47,8 +61,8 @@ def main(args):
         download_dir=args.cache,
         enforce_eager=True,
         worker_use_ray=True,
-        tensor_parallel_size=args.tensor_parallel_size,
         max_model_len=50_000,
+        **kwargs[model],
     )
 
     sampling_params = SamplingParams(

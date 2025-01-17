@@ -1,0 +1,82 @@
+#!/usr/bin/env python
+
+import os
+import argparse
+import sqlite3
+import numpy as np
+from datasets import Dataset
+from pprint import pprint
+from itertools import product
+from tabulate import tabulate
+from tqdm import tqdm
+
+from IPython.terminal.embed import InteractiveShellEmbed
+
+def main(args):
+    pth = args.path
+    con = sqlite3.connect(pth)
+    cur = con.cursor()
+    tables = list(list(zip(*cur.execute(
+        'select name from sqlite_master where type="table";'
+    ).fetchall()))[0])
+    try:
+        views = list(list(zip(*cur.execute(
+            'select name from sqlite_master where type="view";'
+        ).fetchall()))[0])
+    except:
+        views = []
+
+    columns = dict()
+    for name in tables:
+        tbl_info = cur.execute(f"PRAGMA table_info({name});").fetchall()
+        _, cols, _, _, _, _ = zip(*tbl_info)
+        columns[name] = list(cols)
+    for name in views:
+        vw_info = cur.execute(f"PRAGMA table_info({name});").fetchall()
+        _, cols, _, _, _, _ = zip(*vw_info)
+        columns[name] = list(cols)
+
+    query = (
+        f"""
+        CREATE VIEW IF NOT EXISTS all_data AS
+        SELECT 
+            R.rowid AS resp_id, R.model, R.temperature, P.template_name, 
+            P.problem_id, P.template_id, P.sys_id, F.problem, F.answer, 
+            P.prompt_text, R.response
+        FROM responses R
+        JOIN prompts P on R.prompt_id=P.rowid
+        JOIN fitb_problems F on P.problem_id=F.rowid
+        JOIN source_data C on F.ref_id=C.rowid
+        """
+    )
+    res = cur.execute(query)
+
+    keys = [
+        'resp_id', 'model', 'temperature', 'template_name', 
+        'problem_id', 'template_id', 'sys_id', 'problem', 'answer', 
+        'prompt_text', 'response', 
+    ]
+
+    out_table = []
+
+    # get some list values
+    res = cur.execute('SELECT DISTINCT template_name from prompts')
+    template_names, = list(zip(*res.fetchall()))
+    res = cur.execute('SELECT DISTINCT model from responses')
+    model_names, = list(zip(*res.fetchall()))
+
+    ipshell = InteractiveShellEmbed()
+    ipshell()
+
+def cursor_generator(cursor, keys):
+    for row in cursor:
+        yield dict(zip(keys, row))
+        
+def make_ds(cursor, keys):
+    return Dataset.from_dict(dict(zip(keys, zip(*cursor.fetchall()))))
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('path', type=str)
+    args = parser.parse_args()
+    main(args)
