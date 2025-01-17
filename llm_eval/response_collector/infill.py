@@ -223,13 +223,11 @@ def infill_setup(args, cfg, keywords):
     ######### unpack vars from cfg ##########
 
     ds_cache = cfg.infill['ds_cache']
+    name = args.name or keywords['timestamp']
 
-    if args.path:
-        save_loc = args.path
-    else:
-        # create database file
-        save_loc = f'{cfg.infill["save_dir"]}/infill/{keywords["timestamp"]}'
-        files.create_path(save_loc)
+    # create database file
+    save_loc = f'{cfg.infill["save_dir"]}/infill/{name}'
+    files.create_path(save_loc)
     db_file = f'{save_loc}/data.db'
     db_is_new = not files.path_exists(db_file)
 
@@ -499,7 +497,7 @@ def infill_solve(args, cfg, keywords):
     a given LLM to try and solve the task.
     """
     display.info(f'running infill_solve using {args.model}')
-    batch_size = cfg.infill['batch_size']
+    batch_size = args.batch_size
     limit = args.limit
 
     db_path = args.path
@@ -639,7 +637,7 @@ def infill_evaluate(args, cfg, keywords):
 
     metric = args.metric
     db_path = args.path
-    batch_size = cfg.infill['batch_size']
+    batch_size = args.batch_size
 
     con = sqlite3.connect(db_path)
     cur = con.cursor()

@@ -85,9 +85,8 @@ def parse():
             'special locations'),
     )
     parser_is.add_argument(
-        '-p', '--path', default=None, type=str,
-        help=('if continuing from a checkpoint, provide the directory '
-              'with this flag'),
+        '-n', '--name', help='sets the name of the output folder',
+        default=None,
     )
     parser_is.add_argument(
         '-l', '--limit', default=None, type=int,
@@ -124,6 +123,11 @@ def parse():
         help=('collects responses with the explicitly chosen templates '
               'as specified in the config'),
     )
+    parser_is.add_argument(
+        '-b', '--batch_size', type=int, default=1000,
+        help='number of samples to process at a time',
+    )
+
 
     # subparser for evaluating the infilling responses
     parser_is = subparser.add_parser('infill_evaluate')
@@ -145,6 +149,10 @@ def parse():
         '-p', '--path', default=None, type=str,
         help=('if continuing from a checkpoint, provide the directory '
               'with this flag'),
+    )
+    parser_is.add_argument(
+        '-b', '--batch_size', type=int, default=1000,
+        help='number of samples to process at a time',
     )
 
     # parser for the evaluation procedure

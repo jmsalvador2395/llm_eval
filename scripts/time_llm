@@ -68,8 +68,10 @@ def main(args):
 
     print(f'*********************************************')
     print(
-        f'model: {args.model}, limit: {args.limit}, '
-        f'num_devices: {args.tensor_parallel_size}, time: {stop-start}'
+        f'model: {args.model}, limit: {args.limit:,}, '
+        f'batch size: {args.batch_size} '
+        f'num_devices: {args.tensor_parallel_size}, '
+        f'time: {stop-start:,.02f}'
     )
     print(f'*********************************************')
 

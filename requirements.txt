@@ -25,4 +25,5 @@ jsonlines
 fuzzywuzzy
 spacy
 einops
+tabulate
 #flash-attn
