@@ -42,10 +42,13 @@ def main(args):
     
     kwargs = {
         "meta-llama/Llama-3.1-8B-Instruct": {
+            "tensor_parallel_size": 2,
         },
         "meta-llama/Llama-3.2-1B-Instruct": {
+            "tensor_parallel_size": 2,
         },
         "meta-llama/Llama-3.2-3B-Instruct": {
+            "tensor_parallel_size": 2,
         },
         "meta-llama/Llama-3.3-70B-Instruct": {
             "tensor_parallel_size": 2,
@@ -84,7 +87,7 @@ def main(args):
     print(
         f'model: {args.model}, limit: {args.limit:,}, '
         f'batch size: {args.batch_size} '
-        f'num_devices: {args.tensor_parallel_size}, '
+        f'num_devices: {2}, '
         f'time: {stop-start:,.02f}'
     )
     print(f'*********************************************')
@@ -128,9 +131,6 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '-b', '--batch_size', type=int, default=1000, 
-    )
-    parser.add_argument(
-        '-t', '--tensor_parallel_size', type=int, default=1, 
     )
 
     args = parser.parse_args()
