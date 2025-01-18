@@ -18,7 +18,6 @@ class Generator:
         sampling: bool=True,
         max_length: int=4096,
         seed: Optional[int]=None,
-        tensor_parallel_size: int=1,
         **kwargs,
     ):
         self.model_name = model_name
