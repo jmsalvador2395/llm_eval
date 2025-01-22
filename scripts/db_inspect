@@ -24,6 +24,14 @@ def main(args):
         tbl_info = cur.execute(f"PRAGMA table_info({name});").fetchall()
         _, cols, _, _, _, _ = zip(*tbl_info)
         columns[name] = list(cols)
+    ipshell = InteractiveShellEmbed()
+    ipshell()
+
+def convert_to_excel(cur, keys):
+    pass
+
+def get_counts(cur):
+
     models = (
         'meta-llama/Llama-3.1-8B-Instruct',
         'meta-llama/Llama-3.2-1B-Instruct',
@@ -43,9 +51,9 @@ def main(args):
             cutoff: np.sum(lengths[model] >= cutoff)
             for cutoff in cutoffs
         }
-    
-    ipshell = InteractiveShellEmbed()
-    ipshell()
+    return (
+        prompt_stats, prompt_lengths, resp_attr, lengths, resp_lengths,
+    )
 
 def count_prompt_tokens(cur, batch_size=1000):
 

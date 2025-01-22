@@ -61,9 +61,9 @@ def main(args):
 
     # get some list values
     res = cur.execute('SELECT DISTINCT template_name from prompts')
-    template_names, = list(zip(*res.fetchall()))
+    template_names, = zip(*res.fetchall())
     res = cur.execute('SELECT DISTINCT model from responses')
-    model_names, = list(zip(*res.fetchall()))
+    model_names, = zip(*res.fetchall())
 
     ipshell = InteractiveShellEmbed()
     ipshell()

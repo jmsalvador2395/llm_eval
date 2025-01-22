@@ -56,6 +56,15 @@ def main(args):
             "load_format": "bitsandbytes",
             "trust_remote_code": True,
         },
+        "mistralai/Mistral-Large-Instruct-2411": {
+            "tensor_parallel_size": 2,
+            "quantization": "bitsandbytes",
+            "load_format": "bitsandbytes",
+            "trust_remote_code": True,
+        }
+    }
+    default = {
+        "tensor_parallel_size": 2,
     }
     # load model
     keys = columns['prompts']
@@ -65,7 +74,7 @@ def main(args):
         enforce_eager=True,
         worker_use_ray=True,
         max_model_len=50_000,
-        **kwargs[model],
+        **kwargs.get(model, default),
     )
 
     sampling_params = SamplingParams(
@@ -76,11 +85,12 @@ def main(args):
         max_tokens=50_000,
     )
 
+    responses = []
     start = time.time()
     for prompts in tqdm(fetch_batches(
         cur, args.batch_size, args.limit)
     ):
-        llm.chat(prompts, sampling_params, use_tqdm=False)
+        resp = llm.chat(prompts, sampling_params, use_tqdm=False)
     stop = time.time()
 
     print(f'*********************************************')
