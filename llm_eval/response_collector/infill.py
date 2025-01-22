@@ -420,7 +420,7 @@ def fetch_picked_templates(
                     yield batch
 
 
-def count_subsamples(cur, batch_size, limit):
+def count_subsamples(cur, batch_size, limit, pids):
     start = time.time()
     res = cur.execute(
         'SELECT DISTINCT template_name FROM prompts'
@@ -429,6 +429,7 @@ def count_subsamples(cur, batch_size, limit):
     stop = time.time()
     display.info(f'unique template_name query took {stop-start:.02f} seconds')
     N = 0
+    N_batch = 0
     for tmplt in template_names:
         start = time.time()
         res = cur.execute(f'SELECT DISTINCT template_id from prompts P where P.template_name="{tmplt}"')
@@ -441,13 +442,28 @@ def count_subsamples(cur, batch_size, limit):
         sids, = list(zip(*res.fetchall()))
         stop = time.time()
         display.info(f'unique sys_id query took {stop-start:.02f} seconds')
-        N += len(tids)*len(sids)*limit
+        #N += len(tids)*len(sids)*limit
         print(f'{tmplt}, tids: {len(tids)}, sids: {len(sids)}')
+        display.info(f'counting samples from each query')
+        start = time.time()
+        for tid, sid in product(tids, sids):
+            count, = cur.execute(
+                f"""
+                SELECT count(*) FROM prompts P
+                WHERE P.template_name="{tmplt}" 
+                    AND P.sys_id={sid} 
+                    AND P.template_id={tid}
+                    AND P.problem_id in {tuple(pids)}
+                """
+            ).fetchone()
+            N += count
+            N_batch += count // batch_size 
+            if count % batch_size:
+                N_batch += 1
+        stop = time.time()
+        display.info(f'counting samples took {stop-start:.02f} seconds')
 
-    display.info(f'prompts to process: {N}')
-    N_batch = N // batch_size
-    if N % batch_size:
-        N_batch += 1
+    display.info(f'batch_size: {batch_size}, limit: {limit}, N: {N}, N_batch: {N_batch}')
     return N_batch
 
 
@@ -551,7 +567,7 @@ def infill_solve(args, cfg, keywords):
             pids, = zip(*cur.execute(f'SELECT pid FROM sample_pids'))
 
         print(f'counting prompt variations')
-        N_batch = count_subsamples(cur, batch_size, args.limit)
+        N_batch = count_subsamples(cur, batch_size, args.limit, pids)
         print(f'creating generator function')
         gen_fn = fetch_subsamples(
             cur, batch_size, args.limit, pids, keys=keys
