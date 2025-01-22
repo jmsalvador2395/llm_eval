@@ -43,28 +43,49 @@ def main(args):
     kwargs = {
         "meta-llama/Llama-3.1-8B-Instruct": {
             "tensor_parallel_size": 2,
+            "max_model_len": 50_000,
         },
         "meta-llama/Llama-3.2-1B-Instruct": {
             "tensor_parallel_size": 2,
+            "max_model_len": 50_000,
         },
         "meta-llama/Llama-3.2-3B-Instruct": {
             "tensor_parallel_size": 2,
+            "max_model_len": 50_000,
         },
         "meta-llama/Llama-3.3-70B-Instruct": {
             "tensor_parallel_size": 2,
             "quantization": "bitsandbytes",
             "load_format": "bitsandbytes",
             "trust_remote_code": True,
+            "max_model_len": 50_000,
         },
         "mistralai/Mistral-Large-Instruct-2411": {
             "tensor_parallel_size": 2,
             "quantization": "bitsandbytes",
             "load_format": "bitsandbytes",
             "trust_remote_code": True,
-        }
+        },
+        "mistralai/Ministral-8B-Instruct-2410": {
+            "tensor_parallel_size": 2,
+            "max_model_len": 50_000,
+        },
+        "mistralai/Mistral-Nemo-Instruct-2407": {
+            "tensor_parallel_size": 2,
+            "max_model_len": 50_000,
+        },
+        "mistralai/Mistral-Small-Instruct-2409": {
+            "tensor_parallel_size": 2,
+            "max_model_len": 32_000,
+        },
+        "mistralai/Mistral-Large-Instruct-2411": {
+            "tensor_parallel_size": 2,
+            "max_model_len": 50_000,
+        },
     }
     default = {
         "tensor_parallel_size": 2,
+        "max_model_len": 8192,
     }
     # load model
     keys = columns['prompts']
@@ -73,7 +94,6 @@ def main(args):
         download_dir=args.cache,
         enforce_eager=True,
         worker_use_ray=True,
-        max_model_len=50_000,
         **kwargs.get(model, default),
     )
 
