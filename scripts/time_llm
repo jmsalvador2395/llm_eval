@@ -86,7 +86,7 @@ def main(args):
     }
     default = {
         "tensor_parallel_size": 2,
-        "max_model_len": 8000,
+        "max_model_len": 4096,
     }
     # load model
     keys = columns['prompts']
