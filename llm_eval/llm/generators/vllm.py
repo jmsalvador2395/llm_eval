@@ -23,7 +23,7 @@ class VLLM(Generator):
             seed=int(time.time()),
             download_dir=self.model_cache,
             #max_model_len=self.max_length,
-            #enforce_eager=True,
+            enforce_eager=True,
             #worker_use_ray=True,
             **kwargs,
         )

@@ -63,7 +63,6 @@ infill:
   seed: 100
   ds_cache: "{{project_root}}/data/cache"
   save_dir: "{{project_root}}/data/results"
-  batch_size: 1000
   target_data:
     - "roc"
     - "sind"
@@ -82,6 +81,7 @@ infill:
     # fitb_l3: "{{project_root}}/cfg/prompts/fitb_l3.yaml" 
     # fitb_l4: "{{project_root}}/cfg/prompts/fitb_l4.yaml" 
     sys: "{{project_root}}/cfg/prompts/fitb_format/fitb_system.yaml"
+    fitb_l0: "{{project_root}}/cfg/prompts/fitb_format/fitb_l0.yaml" 
     fitb_l1: "{{project_root}}/cfg/prompts/fitb_format/fitb_l1.yaml" 
     fitb_l2: "{{project_root}}/cfg/prompts/fitb_format/fitb_l2.yaml" 
     fitb_l3: "{{project_root}}/cfg/prompts/fitb_format/fitb_l3.yaml" 
@@ -100,8 +100,8 @@ infill:
     rouge:
       use_aggregator: False
   temps:
-    - 0.7
-    - 0.5
+    #- 0.7
+    #- 0.5
     - 0.3
   picked_templates:
     meta-llama/Llama-3.2-1B-Instruct:
