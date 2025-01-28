@@ -314,8 +314,14 @@ def infill_setup(args, cfg, keywords):
     # load in datasets
     #ds_names = cfg.infill['target_data']
     ds_info = cfg.datasets
+    tok_names = cfg.infill.get(
+        'limit_tokenizers', 
+        ['meta-llama/Llama-3.2-1B-Instruct']
+    )
     for name in tqdm(ds_names, desc='populating source document table'):
-        text = load_data(name, cfg, ds_info[name], args.limit)
+        text = load_data(
+            name, cfg, ds_info[name], args.limit, tok_names
+        )
         N = len(text)
         cur.executemany(
             "INSERT OR IGNORE INTO source_data VALUES(?, ?, ?)",
@@ -704,6 +710,7 @@ def infill_evaluate(args, cfg, keywords):
     )
 
     keys = ['resp_id', 'problem', 'answer', 'response']
+    ans_extract_patterns = cfg.infill.get('ans_extract_patterns', [])
     
     N, = cur.execute('select count(*) from responses').fetchone()
     N_batch = N // batch_size
@@ -714,6 +721,11 @@ def infill_evaluate(args, cfg, keywords):
         total=N_batch, desc=f'evaluating {metric}'
     ):
         # TODO check if samples exist before calculating scores
+        breakpoint()
+        extractions = extract_from_responses(
+            batch, ans_extract_patterns
+        )
+        
 
         scores = critic.compute(
             predictions=batch['response'],
@@ -747,6 +759,8 @@ def infill_evaluate(args, cfg, keywords):
                     )
                 )
                 con.commit()
+def extract_from_responses(batch, patterns):
+    pass
 def batch_generator(cur, batch_size, keys=None):
     while True:
         batch = cur.fetchmany(batch_size)
