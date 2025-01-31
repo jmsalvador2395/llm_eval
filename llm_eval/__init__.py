@@ -40,6 +40,8 @@ def main():
             response_collector.infill_setup(args, cfg, keywords)
         case 'infill_solve':
             response_collector.infill_solve(args, cfg, keywords)
+        case 'infill_extract':
+            response_collector.infill_extract(args, cfg, keywords)
         case 'infill_evaluate':
             response_collector.infill_evaluate(args, cfg, keywords)
         case _:

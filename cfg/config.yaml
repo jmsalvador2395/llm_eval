@@ -121,8 +121,8 @@ infill:
         tids: [5, 1]
         sids: [5, 2]
   ans_extract_patterns:
-    - <ANSWER>(.*?)</ANSWER>
-    - <BLANK>(.*?)</BLANK>
+    - |
+      <ANSWER>(.*?)</ANSWER>
 
 resp_coll:
   ds_cache: "{{project_root}}/data/cache"

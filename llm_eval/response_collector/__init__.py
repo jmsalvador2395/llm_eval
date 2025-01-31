@@ -1,2 +1,4 @@
 from .collection_loop import run
-from .infill import infill_setup, infill_solve, infill_evaluate
+from .infill import (
+    infill_setup, infill_solve, infill_evaluate, infill_extract
+)

@@ -15,6 +15,7 @@ from numpy.lib.stride_tricks import sliding_window_view
 from tqdm import tqdm
 from nltk import sent_tokenize
 from typing import List
+from difflib import ndiff
 import re
 import time
 
@@ -28,6 +29,7 @@ from llm_eval.prompt_generator import TELeR, PromptGenerator
 from llm_eval.llm.generators.vllm import VLLM
 from llm_eval.llm.session import Session
 from .datamodule import load_data
+from . import db_funcs
 
 def create_problems(
     ds_name: str, 
@@ -655,6 +657,120 @@ def infill_solve(args, cfg, keywords):
         )
         con.commit()
 
+def extract_answers(sample: dict, patterns=[]):
+    extr = dict()
+    extr['full'] = sample['response']
+    diffs = list(ndiff(
+        sample['problem'].split(), 
+        sample['response'].split()
+    ))
+
+    # A = problem text, B = response text
+    A_only = [word[2:] for word in diffs if word.startswith('- ')]
+    B = [
+        word[2:] for word in diffs 
+        if re.match('^\+\s|^\s\s', word)
+    ]
+    B_only = [word[2:] for word in diffs if word.startswith('+ ')]
+    extr['all_exclusive'] = ' '.join(B_only)
+
+    # find uninterupted exclusive sub-sequences in text
+    seqs = []
+    candidate = ''
+    for word in sample['response'].split():
+        if word in B_only:
+            candidate += f' {word}'
+        elif candidate != '':
+            seqs.append(candidate.strip())
+            candidate = ''
+    if candidate != '':
+        seqs.append(candidate.strip())
+    seqs = list(filter(lambda x: len(x.split()) > 3, seqs))
+    extr.update({f'diff_seqs:{i}': seq for i, seq in enumerate(seqs)})
+    lines = sample['response'].split('\n')
+    lines = [line for line in lines if line != '']
+    if len(lines) > 1:
+        extr.update({f'lines:{i}': seq for i, seq in enumerate(lines)})
+
+    # convert to list if patterns is just a string
+    if isinstance(patterns, str):
+        patterns = [patterns]
+
+    # extract using search patterns
+    for i, pattern in enumerate(patterns):
+        matches = re.findall(pattern, sample['response'])
+        extr.update({
+            f'pattern:{i},pos:{k}': match 
+            for k, match in enumerate(matches)
+        })
+
+    return extr, diffs
+
+def infill_extract(args, cfg, keywords):
+    db_path = args.path
+
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+    stream_cur = con.cursor()
+
+    match_patterns = cfg.infill.get('ans_extract_patterns', [])
+
+    table_info = db_funcs.get_tables(con)
+    if 'responses' not in table_info:
+        raise Exception(
+            'table `responses` does not exist in the provided database'
+        )
+
+    N, = cur.execute(f'select count(*) from responses').fetchone()
+    keys = table_info['responses']
+
+    if 'extractions' in table_info:
+        checkpoint, = cur.execute(
+            f'SELECT COUNT(*) FROM extractions'
+        ).fetchone()
+    else:
+        # create table for extractions 
+        checkpoint = 0
+        cur.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS extractions (
+                resp_id int,
+                tag text,
+                text text,
+                PRIMARY KEY (resp_id, tag)
+                FOREIGN KEY (resp_id) REFERENCES responses(rowid)
+            )
+            """
+        )
+    res = stream_cur.execute(
+        f"""
+        SELECT R.rowid, R.response, F.problem
+        FROM responses R, prompts P, fitb_problems F
+        WHERE
+            R.prompt_id=P.rowid
+            AND P.problem_id=F.rowid
+        """
+    )
+    data_stream = db_funcs.cursor_generator(
+        res, keys=['rowid', 'response', 'problem']
+    )
+    for n, sample in tqdm(
+        enumerate(data_stream), total=N,
+        desc='extracting candidates from each response'
+    ):
+        if n < checkpoint:
+            continue
+        extr, diffs = extract_answers(sample, patterns=match_patterns)
+        tags, texts, = zip(*extr.items())
+        cur.executemany(
+            """
+            INSERT INTO extractions (resp_id, tag, text)
+            VALUES (?, ?, ?)
+            """,
+            zip([sample['rowid']]*len(tags), tags, texts)
+        )
+        con.commit()
+
 def infill_evaluate(args, cfg, keywords):
 
     metric = args.metric
@@ -693,42 +809,52 @@ def infill_evaluate(args, cfg, keywords):
         cur.execute(
             f"""
             CREATE TABLE IF NOT EXISTS {table_name} (
-                resp_id int PRIMARY KEY,
+                extraction_id int PRIMARY KEY,
                 score double,
-                FOREIGN KEY (resp_id) REFERENCES responses(rowid)
+                FOREIGN KEY (extraction_id) 
+                    REFERENCES extractions(rowid)
             )
             """
     )
 
     read_cur = con.cursor()
+    # data_cur = read_cur.execute(
+    #     f"""
+    #     SELECT R.rowid, F.problem, F.answer, R.response
+    #     FROM responses R, prompts P, fitb_problems F
+    #     WHERE R.prompt_id=P.rowid AND P.problem_id=F.rowid
+    #     """
+    # )
     data_cur = read_cur.execute(
         f"""
-        SELECT R.rowid, F.problem, F.answer, R.response
-        FROM responses R, prompts P, fitb_problems F
-        WHERE R.prompt_id=P.rowid AND P.problem_id=F.rowid
+        SELECT E.rowid, F.problem, F.answer, R.response, E.text
+        FROM extractions E, responses R, prompts P, fitb_problems F
+        WHERE 
+            R.prompt_id=P.rowid 
+            AND P.problem_id=F.rowid
+            AND E.resp_id=R.rowid
         """
     )
 
-    keys = ['resp_id', 'problem', 'answer', 'response']
-    ans_extract_patterns = cfg.infill.get('ans_extract_patterns', [])
+    keys = ['extraction_id', 'problem', 'answer', 'response', 'text']
     
-    N, = cur.execute('select count(*) from responses').fetchone()
+    N, = cur.execute(f'select count(*) from extractions').fetchone()
     N_batch = N // batch_size
     if N % batch_size:
         N_batch += 1
-    for batch in tqdm(
-        batch_generator(data_cur, batch_size, keys=keys), 
+    n_processed, = cur.execute(
+        f'SELECT COUNT(*) from {table_name}'
+    ).fetchone()
+    checkpoint = n_processed // batch_size
+    for n, batch in tqdm(
+        enumerate(batch_generator(data_cur, batch_size, keys=keys)), 
         total=N_batch, desc=f'evaluating {metric}'
     ):
-        # TODO check if samples exist before calculating scores
-        breakpoint()
-        extractions = extract_from_responses(
-            batch, ans_extract_patterns
-        )
-        
+        if n < checkpoint:
+            continue
 
         scores = critic.compute(
-            predictions=batch['response'],
+            predictions=batch['text'],
             references=batch['answer'],
             **kwargs
         )
@@ -737,11 +863,11 @@ def infill_evaluate(args, cfg, keywords):
             for table_name, met in zip(table_names, met_cols):
                 cur.executemany(
                     f"""
-                    INSERT INTO {table_name} (resp_id, score)
+                    INSERT INTO {table_name} (extraction_id, score)
                     VALUES (?, ?)
                     """,
                     zip(
-                        batch['resp_id'], 
+                        batch['extraction_id'], 
                         scores[met]
                     )
                 )
@@ -750,17 +876,16 @@ def infill_evaluate(args, cfg, keywords):
             for table_name in table_names:
                 cur.executemany(
                     f"""
-                    INSERT INTO {table_name} (resp_id, score)
+                    INSERT INTO {table_name} (extraction_id, score)
                     VALUES (?, ?)
                     """,
                     zip(
-                        batch['resp_id'],
+                        batch['extraction_id'],
                         scores[table_name]
                     )
                 )
                 con.commit()
-def extract_from_responses(batch, patterns):
-    pass
+
 def batch_generator(cur, batch_size, keys=None):
     while True:
         batch = cur.fetchmany(batch_size)

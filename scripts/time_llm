@@ -66,22 +66,7 @@ def main(args):
             "quantization": "bitsandbytes",
             "load_format": "bitsandbytes",
             "trust_remote_code": True,
-        },
-        "mistralai/Ministral-8B-Instruct-2410": {
-            "tensor_parallel_size": 2,
-            "max_model_len": 50_000,
-        },
-        "mistralai/Mistral-Nemo-Instruct-2407": {
-            "tensor_parallel_size": 2,
-            "max_model_len": 50_000,
-        },
-        "mistralai/Mistral-Small-Instruct-2409": {
-            "tensor_parallel_size": 2,
-            "max_model_len": 32_000,
-        },
-        "mistralai/Mistral-Large-Instruct-2411": {
-            "tensor_parallel_size": 2,
-            "max_model_len": 50_000,
+            "max_model_len": 4096
         },
     }
     default = {
@@ -95,7 +80,7 @@ def main(args):
             model, 
             download_dir=args.cache,
             enforce_eager=True,
-            worker_use_ray=True,
+            #worker_use_ray=True,
             **kwargs.get(model, default),
         )
     except Exception as e:

@@ -128,6 +128,23 @@ def parse():
         help='number of samples to process at a time',
     )
 
+    # subparser for extracting the infilling responses
+    parser_is = subparser.add_parser('infill_extract')
+    parser_is.add_argument(
+        '-c', '--cfg', help='config path',
+        default=f'{files.project_root()}/cfg/config.yaml',
+    )
+    parser_is.add_argument(
+        '-d', '--debug', action='store_true', default=False,
+        help=(
+            'sets the program to debug mode. moves outputs to '
+            'special locations'),
+    )
+    parser_is.add_argument(
+        '-p', '--path', default=None, type=str,
+        help=('if continuing from a checkpoint, provide the directory '
+              'with this flag'),
+    )
 
     # subparser for evaluating the infilling responses
     parser_is = subparser.add_parser('infill_evaluate')
