@@ -16,6 +16,7 @@ class Session:
         system_role: Optional[str]=None,
         hist: List[Dict[str, str]] | List[str]=[],
         override_sys: bool=False,
+        supports_sys: bool=True,
     ):
         """
         Args:
@@ -29,6 +30,7 @@ class Session:
               'override_sys' flag to True
         """
         self.hist = copy.deepcopy(hist)
+        self.supports_sys = supports_sys
 
         if sess_type not in ['chat', 'chat_custom', 'standard']:
             raise ValueError(

@@ -780,7 +780,10 @@ def infill_evaluate(args, cfg, keywords):
     con = sqlite3.connect(db_path)
     cur = con.cursor()
 
-    kwargs = cfg.infill['kwargs'].get(metric, dict())
+    kwargs = cfg.infill['kwargs'].get(metric)
+    if kwargs is None: 
+        kwargs = cfg.infill['kwargs'].get('default')
+
     mets = ['bertscore', 'rouge']
     if metric == 'bertscore':
         critic = evaluate.load('evaluate-metric/bertscore')
