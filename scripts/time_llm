@@ -40,6 +40,11 @@ def main(args):
         vw_info = cur.execute(f"PRAGMA table_info({name});").fetchall()
         _, cols, _, _, _, _ = zip(*vw_info)
         columns[name] = list(cols)
+    no_sys_models = [
+        "google/gemma-2-2b-it",
+        "google/gemma-2-9b-it",
+        "google/gemma-2-27b-it",
+    ]
     
     kwargs = {
         "meta-llama/Llama-3.1-8B-Instruct": {
@@ -101,7 +106,7 @@ def main(args):
     responses = []
     start = time.time()
     for prompts in tqdm(fetch_batches(
-        cur, args.batch_size, args.limit)
+        cur, args.batch_size, args.limit, model, no_sys_models)
     ):
         resp = llm.chat(prompts, sampling_params, use_tqdm=False)
     stop = time.time()
@@ -119,18 +124,24 @@ def main(args):
         ipshell = InteractiveShellEmbed()
         ipshell()
 
-def fetch_batches(cur, batch_size, limit):
+def fetch_batches(cur, batch_size, limit, model, no_sys_models):
     read_cur =  cur.execute('select sys_text, prompt_text from prompts')
     prog = 0
     while prog < limit:
         sys, prompt = zip(*read_cur.fetchmany(batch_size))
         if not sys:  # No more rows to fetch
             break
-        prompts = [
-            [{'role': 'system', 'content': s},
-             {'role': 'user', 'content': p},]
-             for s, p in zip(sys, prompt)
-        ]
+        if model in no_sys_models:
+            prompts = [
+                [{'role': 'user', 'content': f'{s}\n\n{p}'}]
+                for s, p in zip(sys, prompt)
+            ]
+        else:
+            prompts = [
+                [{'role': 'system', 'content': s},
+                {'role': 'user', 'content': p},]
+                for s, p in zip(sys, prompt)
+            ]
         prog += len(prompts)
         yield prompts
 
