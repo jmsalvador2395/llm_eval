@@ -73,6 +73,12 @@ def main(args):
             "trust_remote_code": True,
             "max_model_len": 4096
         },
+        "deepseek-ai/DeepSeek-V3": {
+            "tensor_parallel_size": 2,
+            "trust_remote_code": True,
+            "max_model_len": 4096,
+            "dtype": "fp8",
+        }
     }
     default = {
         "tensor_parallel_size": 2,
