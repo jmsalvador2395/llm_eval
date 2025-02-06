@@ -523,6 +523,7 @@ def infill_solve(args, cfg, keywords):
     display.info(f'running infill_solve using {args.model}')
     batch_size = args.batch_size
     limit = args.limit
+    supports_sys = not args.no_sys
 
     db_path = args.path
     con = sqlite3.connect(db_path)
@@ -640,7 +641,7 @@ def infill_solve(args, cfg, keywords):
             continue
 
         sessions = [
-            Session(system_role=sys_role) 
+            Session(system_role=sys_role, supports_sys=supports_sys) 
             for sys_role in batch['sys_text']
         ]
         out_sess, resp = model.generate(

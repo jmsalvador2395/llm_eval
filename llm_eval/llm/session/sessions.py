@@ -30,6 +30,7 @@ class Session:
               'override_sys' flag to True
         """
         self.hist = copy.deepcopy(hist)
+        self.system_role = system_role
         self.supports_sys = supports_sys
 
         if sess_type not in ['chat', 'chat_custom', 'standard']:
@@ -45,7 +46,14 @@ class Session:
 
         el = {'role': 'system', 'content': system_role}
         if system_role and len(self.hist) == 0:
-            self.hist.append(el)
+            if self.supports_sys:
+                self.hist.append(el)
+            else:
+                """
+                system role gets added when the first 'add_prompt' is
+                called
+                """
+                pass
         elif system_role and len(self.hist) > 0:
             if self.hist[0]['role'] != 'system':
                 self.hist = [el] + self.hist
@@ -57,6 +65,7 @@ class Session:
                     "already has it. To overwrite the existing role, "
                     "set the 'override_sys' flag to True"
                 )
+
     
     def __str__(self):
         return f'Session({self.hist})'
@@ -154,7 +163,17 @@ class Session:
           >>> print(sess.hist)
           [{'role': 'user', 'content': 'hello'}]
         """
-        el = {'role': role, 'content': prompt}
+        if (
+            role == 'user' 
+            and len(self.hist) == 0 
+            and not self.supports_sys
+        ):
+            el = {
+                'role': role, 
+                'content': f"{self.system_role}\n\n{prompt}"
+            }
+        else:
+            el = {'role': role, 'content': prompt}
         if inplace:
             self.hist.append(el)
             return self

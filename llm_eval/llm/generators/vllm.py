@@ -22,9 +22,7 @@ class VLLM(Generator):
             model=self.model_name,
             seed=int(time.time()),
             download_dir=self.model_cache,
-            #max_model_len=self.max_length,
             enforce_eager=True,
-            #worker_use_ray=True,
             **kwargs,
         )
 
@@ -42,7 +40,6 @@ class VLLM(Generator):
             for sess, prompt in zip(sessions, prompts)
         ]
 
-
         sampling_params = SamplingParams(
             temperature=temp or self.temperature,
             top_p=self.top_p,
@@ -53,6 +50,7 @@ class VLLM(Generator):
 
         if self.session_type == 'chat':
             chats = [sess.get_hist() for sess in out_sessions]
+            breakpoint()
             # make inference call
             responses = self.model.chat(
                 chats, sampling_params, use_tqdm=use_tqdm

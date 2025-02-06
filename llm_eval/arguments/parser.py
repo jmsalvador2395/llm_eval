@@ -127,6 +127,11 @@ def parse():
         '-b', '--batch_size', type=int, default=1000,
         help='number of samples to process at a time',
     )
+    parser_is.add_argument(
+        '-n', '--no_sys', action='store_true', default=False,
+        help=('tells the chat formatter to combine the system role and '
+              'prompt into the "user" role')
+    )
 
     # subparser for extracting the infilling responses
     parser_is = subparser.add_parser('infill_extract')
