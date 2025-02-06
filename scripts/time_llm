@@ -85,7 +85,14 @@ def main(args):
             "quantization": "fp8",
             "trust_remote_code": True,
             "max_model_len": 4096,
-        }
+        },
+        "deepseek-ai/DeepSeek-R1-Distill-Llama-70B": {
+            "tensor_parallel_size": 2,
+            "quantization": "bitsandbytes",
+            "load_format": "bitsandbytes",
+            "trust_remote_code": True,
+            "max_model_len": 4096,
+        },
     }
     default = {
         "tensor_parallel_size": 2,
