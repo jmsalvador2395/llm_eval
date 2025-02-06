@@ -157,7 +157,7 @@ model_params:
   model_cache: "{{project_root}}/data/llm_cache"
   default:
     max_model_len: 4096
-    trust_remote_code: 2
+    trust_remote_code: True
     tensor_parallel_size: 2
   meta-llama/Llama-3.1-8B-Instruct:
     max_model_len: 4096
@@ -167,7 +167,13 @@ model_params:
     max_model_len: 4096
   meta-llama/Llama-3.3-70B-Instruct:
     max_model_len: 4096
-    #tensor_parallel_size: 2
+    tensor_parallel_size: 2
+    quantization: "bitsandbytes"
+    load_format: "bitsandbytes"
+    trust_remote_code: True
+  deepseek-ai/DeepSeek-R1-Distill-Llama-70B:
+    max_model_len: 4096
+    tensor_parallel_size: 2
     quantization: "bitsandbytes"
     load_format: "bitsandbytes"
     trust_remote_code: True
