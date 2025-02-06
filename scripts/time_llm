@@ -75,9 +75,10 @@ def main(args):
         },
         "deepseek-ai/DeepSeek-V3": {
             "tensor_parallel_size": 2,
+            "quantization": "bitsandbytes",
+            "load_format": "bitsandbytes",
             "trust_remote_code": True,
             "max_model_len": 4096,
-            "dtype": "fp8",
         }
     }
     default = {
