@@ -73,6 +73,13 @@ def main(args):
             "trust_remote_code": True,
             "max_model_len": 4096
         },
+        "mistralai/Mixtral-8x22B-Instruct-v0.1": {
+            "tensor_parallel_size": 2,
+            "quantization": "bitsandbytes",
+            "load_format": "bitsandbytes",
+            "trust_remote_code": True,
+            "max_model_len": 4096
+        },
         "deepseek-ai/DeepSeek-V3": {
             "tensor_parallel_size": 2,
             "quantization": "bitsandbytes",
