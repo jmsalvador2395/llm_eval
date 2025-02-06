@@ -50,7 +50,6 @@ class VLLM(Generator):
 
         if self.session_type == 'chat':
             chats = [sess.get_hist() for sess in out_sessions]
-            breakpoint()
             # make inference call
             responses = self.model.chat(
                 chats, sampling_params, use_tqdm=use_tqdm
