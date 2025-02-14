@@ -150,6 +150,14 @@ def parse():
         help=('if continuing from a checkpoint, provide the directory '
               'with this flag'),
     )
+    parser_is.add_argument(
+        '-b', '--batch_size', type=int, default=1000,
+        help='number of samples to process at a time',
+    )
+    parser_is.add_argument(
+        '-x', '--num_proc', type=int, default=4,
+        help='number of processes to use for extraction',
+    )
 
     # subparser for evaluating the infilling responses
     parser_is = subparser.add_parser('infill_evaluate')

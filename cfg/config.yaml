@@ -97,8 +97,14 @@ infill:
   kwargs:
     bertscore:
       lang: "en"
+      nthreads: 16
+      batch_size: 200
+      rescale_with_baseline: True
     rouge:
       use_aggregator: False
+    perplexity:
+      model_id: "meta-llama/Llama-3.2-1B"
+      batch_size: 4
   temps:
     #- 0.7
     #- 0.5

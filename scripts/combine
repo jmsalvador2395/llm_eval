@@ -5,6 +5,7 @@ import sqlite3
 import numpy as np
 import time
 import json
+import os
 from tqdm import tqdm
 from transformers import AutoTokenizer
 
@@ -24,8 +25,69 @@ def main(args):
         tbl_info = cur.execute(f"PRAGMA table_info({name});").fetchall()
         _, cols, _, _, _, _ = zip(*tbl_info)
         columns[name] = list(cols)
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS responses (
+            prompt_id int,
+            response text,
+            model text,
+            temperature double,
+            PRIMARY KEY (prompt_id, model, temperature)
+            FOREIGN KEY (prompt_id) REFERENCES prompts(rowid)
+        )
+        """
+    )
+
+    try:
+        models, = zip(*cur.execute(
+            f'SELECT DISTINCT(model) FROM responses'
+        ))
+    except:
+        models = []
+
+    parent = os.path.dirname(pth)
+    all_files = os.listdir(parent)
+    folders = list(filter(
+        lambda x: os.path.isdir(os.path.join(parent, x)), 
+        all_files
+    ))
+
+    for folder in tqdm(folders):
+        subcon = sqlite3.connect(
+            os.path.join(parent, folder, 'data.db')
+        )
+
+        readcur = subcon.cursor()
+        exists = readcur.execute(
+            f"""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name='responses';
+            """
+        ).fetchone()
+        exists = exists is not None
+
+        if exists:
+            model, = readcur.execute(
+                f'SELECT DISTINCT(model) FROM responses'
+            ).fetchone()
+            if model not in models:
+                data = readcur.execute(f'select * from responses')
+                cur.executemany(
+                    f"""
+                    INSERT INTO responses VALUES (?, ?, ?, ?)
+                    """,
+                    data
+                )
+                con.commit()
+
+        else:
+            print(f'responses table does not exist for data: {folder}')
+        
+
     ipshell = InteractiveShellEmbed()
     ipshell()
+
 
 def convert_to_excel(cur, keys):
     pass
@@ -197,12 +259,6 @@ def cur_gen(cur, batch_size=1000, keys=None):
             yield dict(zip(keys, zip(*batch)))
         else:
             yield batch
-def drop_metrics(cur):
-    metrics, = zip(*cur.execute(f'select name from metric_names'))
-    for metric in metrics:
-        cur.execute(f'drop table {metric}')
-    cur.execute(f'drop table metric_names')
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('path', type=str)

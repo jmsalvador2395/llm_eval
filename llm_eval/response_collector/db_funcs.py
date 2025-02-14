@@ -30,12 +30,17 @@ def cursor_generator(cursor, keys):
 def make_ds(cursor, keys):
     return Dataset.from_dict(dict(zip(keys, zip(*cursor.fetchall()))))
 
-def cur_gen(cur, batch_size=1000, keys=None):
+def cur_gen(cur, batch_size=1000, keys=None, list_of_dicts=False):
     while True:
         batch = cur.fetchmany(batch_size)
         if not batch:  # No more rows to fetch
             break
         if keys:
-            yield dict(zip(keys, zip(*batch)))
+            if list_of_dicts:
+                yield [
+                    dict(zip(keys, values)) for values in batch 
+                ]
+            else:
+                yield dict(zip(keys, zip(*batch)))
         else:
             yield batch

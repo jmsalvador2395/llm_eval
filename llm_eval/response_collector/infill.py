@@ -10,12 +10,15 @@ import datasets
 import numpy as np
 import random
 import sqlite3
-from itertools import product
+from itertools import product, chain
 from numpy.lib.stride_tricks import sliding_window_view
 from tqdm import tqdm
 from nltk import sent_tokenize
 from typing import List
 from difflib import ndiff
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
+
 import re
 import time
 
@@ -660,7 +663,7 @@ def infill_solve(args, cfg, keywords):
         )
         con.commit()
 
-def extract_answers(sample: dict, patterns=[]):
+def extract_answers(sample: dict, patterns=[], return_diffs=False):
     extr = dict()
     extr['full'] = sample['response']
     diffs = list(ndiff(
@@ -706,11 +709,19 @@ def extract_answers(sample: dict, patterns=[]):
             f'pattern:{i},pos:{k}': match 
             for k, match in enumerate(matches)
         })
+    
+    # filter out empty strings
+    extr = {k: v for k, v in extr.items() if v != ""}
 
-    return extr, diffs
+    if return_diffs:
+        return extr, diffs
+    else:
+        return extr
 
 def infill_extract(args, cfg, keywords):
     db_path = args.path
+    batch_size = args.batch_size
+    num_proc = args.num_proc
 
     con = sqlite3.connect(db_path)
     cur = con.cursor()
@@ -727,10 +738,20 @@ def infill_extract(args, cfg, keywords):
     N, = cur.execute(f'select count(*) from responses').fetchone()
     keys = table_info['responses']
 
+    N_batch = N // batch_size
+    if N % batch_size:
+        N_batch += 1
+
     if 'extractions' in table_info:
         checkpoint, = cur.execute(
-            f'SELECT COUNT(*) FROM extractions'
+            f'SELECT MAX(resp_id) FROM extractions'
         ).fetchone()
+        if checkpoint is None:
+            checkpoint = 0
+        else:
+            checkpoint = N // batch_size
+            if N % batch_size:
+                checkpoint += 1
     else:
         # create table for extractions 
         checkpoint = 0
@@ -754,23 +775,40 @@ def infill_extract(args, cfg, keywords):
             AND P.problem_id=F.rowid
         """
     )
-    data_stream = db_funcs.cursor_generator(
-        res, keys=['rowid', 'response', 'problem']
+    data_stream = db_funcs.cur_gen(
+        res, 
+        batch_size=batch_size, 
+        keys=['rowid', 'response', 'problem'],
+        list_of_dicts=True,
     )
-    for n, sample in tqdm(
-        enumerate(data_stream), total=N,
-        desc='extracting candidates from each response'
+    extract_answers_partial = partial(
+        extract_answers, 
+        patterns=match_patterns,
+        return_diffs=False
+    )
+    for n, batch in tqdm(
+        enumerate(data_stream), total=N_batch,
+        desc='extracting candidates from responses'
     ):
         if n < checkpoint:
             continue
-        extr, diffs = extract_answers(sample, patterns=match_patterns)
-        tags, texts, = zip(*extr.items())
+
+        with ProcessPoolExecutor(max_workers=num_proc) as executor:
+            extr = list(executor.map(extract_answers_partial, batch))
+        tags = [key for d in extr for key in d.keys()]
+        texts = [value for d in extr for value in d.values()]
+        n_vals = [len(sample) for sample in extr]
+        rowids = list(chain(*[
+            [sample['rowid']]*nval 
+            for sample, nval in zip(batch, n_vals)
+        ]))
+        #tags, texts, = zip(*extr.items())
         cur.executemany(
             """
             INSERT INTO extractions (resp_id, tag, text)
             VALUES (?, ?, ?)
             """,
-            zip([sample['rowid']]*len(tags), tags, texts)
+            zip(rowids, tags, texts)
         )
         con.commit()
 
@@ -787,7 +825,7 @@ def infill_evaluate(args, cfg, keywords):
     if kwargs is None: 
         kwargs = cfg.infill['kwargs'].get('default')
 
-    mets = ['bertscore', 'rouge']
+    mets = ['bertscore', 'rouge', 'perplexity']
     if metric == 'bertscore':
         critic = evaluate.load('evaluate-metric/bertscore')
         met_cols = ['precision', 'recall', 'f1']
@@ -796,6 +834,14 @@ def infill_evaluate(args, cfg, keywords):
         critic = evaluate.load('rouge')
         met_cols = ['rouge1', 'rouge2', 'rougeL', 'rougeLsum']
         table_names = met_cols
+    elif metric == 'perplexity':
+        critic = evaluate.load('perplexity', module_type='metric')
+        met_model = kwargs['model_id']
+        clean_name = re.sub(r'[^a-zA-Z0-9_]', '_', met_model)
+        table_names = [
+            f'ppl_{clean_name}', f'ppl_diff_{clean_name}'
+        ]
+        display.info(f'evaluating perplexity with: {met_model}')
     else:
         raise ValueError(f'choose from either [{", ".join(mets)}]')
     
@@ -824,13 +870,6 @@ def infill_evaluate(args, cfg, keywords):
     )
 
     read_cur = con.cursor()
-    # data_cur = read_cur.execute(
-    #     f"""
-    #     SELECT R.rowid, F.problem, F.answer, R.response
-    #     FROM responses R, prompts P, fitb_problems F
-    #     WHERE R.prompt_id=P.rowid AND P.problem_id=F.rowid
-    #     """
-    # )
     data_cur = read_cur.execute(
         f"""
         SELECT E.rowid, F.problem, F.answer, R.response, E.text
@@ -859,38 +898,86 @@ def infill_evaluate(args, cfg, keywords):
         if n < checkpoint:
             continue
 
-        scores = critic.compute(
-            predictions=batch['text'],
-            references=batch['answer'],
-            **kwargs
-        )
+        if metric == 'perplexity':
+            candidates = [
+                problem.replace('______', text)
+                for problem, text
+                in zip(batch['problem'], batch['text'])
+            ]
+            answers = [
+                problem.replace('______', answer )
+                for problem, answer 
+                in zip(batch['problem'], batch['answer'])
+            ]
+            score_cand = critic.compute(
+                predictions=candidates, **kwargs
+            )
+            score_cand = np.array(score_cand['perplexities'])
+            score_ans = critic.compute(
+                predictions=answers, **kwargs
+            )
+            score_ans = np.array(score_ans['perplexities'])
+            diffs = (score_cand - score_ans).tolist()
+            score_cand = score_cand.tolist()
+            # table_names = [
+            #     f'ppl_{clean_name}', f'ppl_diff_{clean_name}'
+            # ]
+            cur.executemany(
+                f"""
+                INSERT INTO ppl_{clean_name} (extraction_id, score)
+                VALUES (?, ?)
+                """,
+                zip(
+                    batch['extraction_id'],
+                    score_cand
+                )
+            )
+            cur.executemany(
+                f"""
+                INSERT INTO ppl_diff_{clean_name} (extraction_id, score)
+                VALUES (?, ?)
+                """,
+                zip(
+                    batch['extraction_id'],
+                    diffs
+                )
+            )
+        else:
+            predictions = batch['text']
+            references = batch['answer']
 
-        if metric == 'bertscore':
-            for table_name, met in zip(table_names, met_cols):
-                cur.executemany(
-                    f"""
-                    INSERT INTO {table_name} (extraction_id, score)
-                    VALUES (?, ?)
-                    """,
-                    zip(
-                        batch['extraction_id'], 
-                        scores[met]
+            scores = critic.compute(
+                predictions=predictions,
+                references=references,
+                **kwargs
+            )
+
+            if metric == 'bertscore':
+                for table_name, met in zip(table_names, met_cols):
+                    cur.executemany(
+                        f"""
+                        INSERT INTO {table_name} (extraction_id, score)
+                        VALUES (?, ?)
+                        """,
+                        zip(
+                            batch['extraction_id'], 
+                            scores[met]
+                        )
                     )
-                )
-                con.commit()
-        elif metric == 'rouge':
-            for table_name in table_names:
-                cur.executemany(
-                    f"""
-                    INSERT INTO {table_name} (extraction_id, score)
-                    VALUES (?, ?)
-                    """,
-                    zip(
-                        batch['extraction_id'],
-                        scores[table_name]
+                    con.commit()
+            elif metric == 'rouge':
+                for table_name in table_names:
+                    cur.executemany(
+                        f"""
+                        INSERT INTO {table_name} (extraction_id, score)
+                        VALUES (?, ?)
+                        """,
+                        zip(
+                            batch['extraction_id'],
+                            scores[table_name]
+                        )
                     )
-                )
-                con.commit()
+                    con.commit()
 
 def batch_generator(cur, batch_size, keys=None):
     while True:

@@ -5,6 +5,8 @@ import sqlite3
 import numpy as np
 import time
 import json
+import shutil
+import os
 from tqdm import tqdm
 from transformers import AutoTokenizer
 
@@ -13,7 +15,17 @@ from IPython.terminal.embed import InteractiveShellEmbed
 
 def main(args):
     pth = args.path
-    con = sqlite3.connect(pth)
+    p = args.probs_per_ds
+    out_name = args.out_name
+
+    out_pth = os.path.join(os.path.dirname(pth), out_name)
+    print(f'copying {pth} to {out_pth} ...')
+    start_time = time.time()
+    shutil.copy(pth, out_pth)
+    end_time = time.time()
+    print(f'finished in {end_time - start_time:.02f} seconds')
+
+    con = sqlite3.connect(out_pth)
     cur = con.cursor()
     tables = list(list(zip(*cur.execute(
         'select name from sqlite_master where type="table";'
@@ -24,6 +36,100 @@ def main(args):
         tbl_info = cur.execute(f"PRAGMA table_info({name});").fetchall()
         _, cols, _, _, _, _ = zip(*tbl_info)
         columns[name] = list(cols)
+    dsnames, = zip(
+        *cur.execute(f'select distinct(dataset) from source_data')
+    )
+
+    pids = []
+    for dsname in dsnames:
+        low, high = cur.execute(
+            f"""
+            select min(rowid), max(rowid) from fitb_problems 
+            where dataset="{dsname}"
+            """
+        ).fetchone()
+        sample_space = np.arange(low, high+1)
+        pids.append(np.random.permutation(sample_space)[:p])
+    all_pids = tuple(np.hstack(pids))
+
+    # delete entries not in sample set
+    start_time = time.time()
+    print(f'deleting problems...')
+    cur.execute(
+        f"""
+        DELETE FROM fitb_problems 
+        WHERE rowid NOT IN {all_pids}
+        """
+    )
+    end_time = time.time()
+    print(f'finished in {end_time - start_time:.02f} seconds')
+
+    start_time = time.time()
+    print(f'deleting prompts ...')
+    cur.execute(
+        f"""
+        DELETE FROM prompts
+        WHERE problem_id NOT IN {all_pids}
+        """
+    )
+    end_time = time.time()
+    print(f'finished in {end_time - start_time:.02f} seconds')
+
+    start_time = time.time()
+    print(f'deleting responses ...')
+    prompt_ids, = zip(*cur.execute(
+        f"""
+        SELECT DISTINCT(rowid) FROM prompts
+        """
+    ))
+    cur.execute(
+        f"""
+        DELETE FROM responses
+        WHERE prompt_id NOT IN {prompt_ids}
+        """
+    )
+    end_time = time.time()
+    print(f'finished in {end_time - start_time:.02f} seconds')
+
+    start_time = time.time()
+    print(f'deleting extractions...')
+    resp_ids, = zip(*cur.execute(
+        f"""
+        SELECT DISTINCT(rowid) FROM responses
+        """
+    ))
+    cur.execute(
+        f"""
+        DELETE FROM extractions
+        WHERE resp_id NOT IN {resp_ids}
+        """
+    )
+    end_time = time.time()
+    print(f'finished in {end_time - start_time:.02f} seconds')
+
+    # create a view for the data
+    # query = (
+    #     f"""
+    #     CREATE VIEW IF NOT EXISTS subset AS
+    #     SELECT 
+    #         R.rowid AS resp_id, R.model, P.template_name, 
+    #         P.problem_id, P.template_id, P.sys_id, F.problem, F.answer, 
+    #         P.prompt_text, R.response
+    #     FROM responses R
+    #     JOIN prompts P on R.prompt_id=P.rowid
+    #     JOIN fitb_problems F on P.problem_id=F.rowid
+    #     JOIN source_data C on F.ref_id=C.rowid
+    #     """
+    # )
+    # keys = [
+    #     'resp_id', 'model', 'template_name', 'problem_id', 
+    #     'template_id', 'sys_id', 'problem', 'answer', 'prompt_text', 
+    #     'response',
+    # ]
+    # res = cur.execute(query)
+
+    con.commit()
+
     ipshell = InteractiveShellEmbed()
     ipshell()
 
@@ -197,14 +303,14 @@ def cur_gen(cur, batch_size=1000, keys=None):
             yield dict(zip(keys, zip(*batch)))
         else:
             yield batch
-def drop_metrics(cur):
-    metrics, = zip(*cur.execute(f'select name from metric_names'))
-    for metric in metrics:
-        cur.execute(f'drop table {metric}')
-    cur.execute(f'drop table metric_names')
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('path', type=str)
+    parser.add_argument(
+        '-o', '--out_name', default='subset.db'
+    )
+    parser.add_argument(
+        '-p', '--probs_per_ds', default=3
+    )
     args = parser.parse_args()
     main(args)
