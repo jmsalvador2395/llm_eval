@@ -103,7 +103,7 @@ infill:
     rouge:
       use_aggregator: False
     perplexity:
-      model_id: "meta-llama/Llama-3.2-1B"
+      model_id: "openai-community/gpt2"
       batch_size: 4
   temps:
     #- 0.7
