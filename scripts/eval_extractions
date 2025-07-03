@@ -29,9 +29,14 @@ def main(args):
     con = sqlite3.connect(pth)
     cur = con.cursor()
 
+    supported_metrics = {'rouge', 'bertscore', 'meteor'}
+    if args.metric not in supported_metrics:
+        raise Exception("not implemented")
+
     trgt_metric = args.metric
     met = evaluate.load(trgt_metric)
 
+    # add additional metrics here
     if trgt_metric == 'bertscore':
         metric_kwargs = {
             'lang': 'en',
@@ -42,6 +47,8 @@ def main(args):
         metric_kwargs = {
             'use_aggregator': False,
         }
+    elif trgt_metric == 'meteor':
+        metric_kwargs = dict()
     else:
         raise Exception('not implemented')
 
@@ -57,7 +64,10 @@ def main(args):
         )
         """
     )
-    N, = cur.execute(f'select count(*) from extractions').fetchone()
+    N, = cur.execute(f'SELECT count(*) FROM extractions').fetchone()
+    completed, = cur.execute(
+        f'SELECT count(*) FROM scores WHERE metric="{trgt_metric}"'
+    ).fetchone()
 
     N_batch = N // batch_size
     if N % batch_size:
@@ -86,19 +96,26 @@ def main(args):
         enumerate(data_stream), total=N_batch,
         desc=f'computing {trgt_metric}',
     ):
+        if n*batch_size < completed:
+            continue
         ids = [x['rowid'] for x in batch]
         refs = [x['answer'] for x in batch]
         preds = [x['pred'] for x in batch]
-        scores = met.compute(
-            predictions=preds, references=refs,
-            **metric_kwargs,
-        )
-        if trgt_metric == 'bertscore':
-            scores = scores['f1']
-        elif trgt_metric == 'rouge':
-            scores = scores['rouge1']
+        if trgt_metric == 'meteor':
+            scores = [
+                met.compute(predictions=[pred], references=[ref])['meteor']
+                for pred, ref, in zip(preds, refs)
+            ]
         else:
-            raise Exception("not implemented")
+            scores = met.compute(
+                predictions=preds, references=refs,
+                **metric_kwargs,
+            )
+            if trgt_metric == 'bertscore':
+                scores = scores['f1']
+            elif trgt_metric == 'rouge':
+                scores = scores['rouge1']
+        
         cur.executemany(
             f"""
             INSERT INTO scores (eid, reference, metric, score)
@@ -106,6 +123,7 @@ def main(args):
             """,
             zip(ids, refs, [trgt_metric]*len(ids), scores)
         )
+        con.commit()
 
     ipshell = InteractiveShellEmbed()
     ipshell()
