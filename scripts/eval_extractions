@@ -1,0 +1,157 @@
+#!/usr/bin/env python
+
+import os
+import argparse
+import sqlite3
+import numpy as np
+import re
+import pandas as pd
+import evaluate
+from datasets import Dataset
+from pprint import pprint
+from itertools import product
+from tabulate import tabulate
+from tqdm import tqdm
+from difflib import ndiff
+from collections import Counter
+
+from llm_eval import cfg_reader
+from llm_eval.response_collector.infill import extract_answers
+from llm_eval.utils import files
+from llm_eval.response_collector import db_funcs
+
+from IPython.terminal.embed import InteractiveShellEmbed
+
+def main(args):
+    pth = args.db_path
+    batch_size = args.batch_size
+    cfg, keywords = cfg_reader.load(args.cfg)
+    con = sqlite3.connect(pth)
+    cur = con.cursor()
+
+    trgt_metric = args.metric
+    met = evaluate.load(trgt_metric)
+
+    if trgt_metric == 'bertscore':
+        metric_kwargs = {
+            'lang': 'en',
+            'rescale_with_baseline': True,
+            'nthreads': 8,
+        }
+    elif trgt_metric == 'rouge':
+        metric_kwargs = {
+            'use_aggregator': False,
+        }
+    else:
+        raise Exception('not implemented')
+
+    cur.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS scores (
+            eid int,
+            reference text,
+            metric text,
+            score double,
+            PRIMARY KEY (eid, metric, reference)
+            FOREIGN KEY (eid) REFERENCES extractions(rowid)
+        )
+        """
+    )
+    N, = cur.execute(f'select count(*) from extractions').fetchone()
+
+    N_batch = N // batch_size
+    if N % batch_size:
+        N_batch += 1
+
+    stream_cur = con.cursor()
+    res = stream_cur.execute(
+        f"""
+        SELECT E.rowid, E.text as pred, F.answer, R.response, F.problem, R.model
+        FROM responses R, prompts P, fitb_problems F, extractions E
+        WHERE
+            R.prompt_id=P.rowid
+            AND P.problem_id=F.rowid
+            AND E.resp_id=R.rowid
+        """
+    )
+
+    data_stream = db_funcs.cur_gen(
+        res, 
+        batch_size=batch_size, 
+        keys=['rowid', 'pred', 'answer', 'response', 'problem', 'model'],
+        list_of_dicts=True,
+    )
+
+    for n, batch in tqdm(
+        enumerate(data_stream), total=N_batch,
+        desc=f'computing {trgt_metric}',
+    ):
+        ids = [x['rowid'] for x in batch]
+        refs = [x['answer'] for x in batch]
+        preds = [x['pred'] for x in batch]
+        scores = met.compute(
+            predictions=preds, references=refs,
+            **metric_kwargs,
+        )
+        if trgt_metric == 'bertscore':
+            scores = scores['f1']
+        elif trgt_metric == 'rouge':
+            scores = scores['rouge1']
+        else:
+            raise Exception("not implemented")
+        cur.executemany(
+            f"""
+            INSERT INTO scores (eid, reference, metric, score)
+            VALUES (?, ?, ?, ?)
+            """,
+            zip(ids, refs, [trgt_metric]*len(ids), scores)
+        )
+
+    ipshell = InteractiveShellEmbed()
+    ipshell()
+
+def make_all_data_ds(cursor):
+    keys = [
+        'resp_id', 'model', 'temperature', 'template_name', 
+        'problem_id', 'template_id', 'sys_id', 'problem', 'answer', 
+        'prompt_text', 'response', 
+    ]
+    ds = make_ds(cursor.execute(f'select * from all_data'), keys)
+    return ds
+
+def cursor_generator(cursor, keys):
+    for row in cursor:
+        yield dict(zip(keys, row))
+        
+def make_ds(cursor, keys):
+    return Dataset.from_dict(dict(zip(keys, zip(*cursor.fetchall()))))
+
+def cur_gen(cur, batch_size=1000, keys=None):
+    while True:
+        batch = cur.fetchmany(batch_size)
+        if not batch:  # No more rows to fetch
+            break
+        if keys:
+            yield dict(zip(keys, zip(*batch)))
+        else:
+            yield batch
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        'metric', type=str,
+    )
+    parser.add_argument(
+        '--db_path', '-d', type=str,
+        default=f'{files.project_root()}/data/results/infill/re_final_set/data.db',
+    )
+    parser.add_argument(
+        '--cfg', '-c', type=str,
+        default=f'{files.project_root()}/cfg/config.yaml',
+    )
+    parser.add_argument(
+        '--batch_size', '-b', type=int,
+        default=5000,
+    )
+    args = parser.parse_args()
+    main(args)

@@ -129,6 +129,30 @@ infill:
   ans_extract_patterns:
     - |
       <ANSWER>(.*?)</ANSWER>
+    - |
+      <ANSWER>(.*?)<ANSWER>
+    - |
+      ANSWER:(.*?)</ANSWER>
+    - |
+      '(?:<?ANSWER[:>]?|\bANSWER[:>])\s+(.*?)(?=\s*(?:</?ANSWER[:>]?|\bANSWER[:>]|$))'
+    - |
+      '<(.*?)>'
+    # for deepseek-qwen-7b
+    - |
+      '\*\*(.*?)\*\*'
+    - |
+      ["'](.*?)["']
+  key_tokens:
+    - "<ANSWER>"
+    - "</ANSWER>"
+    - "ANSWER"
+    - "*"
+    - "**"
+    - "ANSWER:"
+    - "_"
+  rm_up_to:
+    deepseek-ai/: "</think>"
+    default: ":"
 
 resp_coll:
   ds_cache: "{{project_root}}/data/cache"

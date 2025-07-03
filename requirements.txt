@@ -28,3 +28,4 @@ einops
 tabulate
 #flash-attn
 bitsandbytes
+openpyxl

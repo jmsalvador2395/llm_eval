@@ -18,7 +18,7 @@
   Answer: "brown fox"
 
   * the blank area is missing {{n}} {{unit}}. tell me the missing text
-  * your response hsould follow the given examples
+  * your response should follow the given examples
 
   {{problem}}
   Answer:
@@ -44,7 +44,7 @@
   Answer: "brown fox"
 
   * the blank area is missing {{n}} {{unit}}. tell me the missing text
-  * your response hsould follow the given examples
+  * your response should follow the given examples
   * surround your answer with the tags, <ANSWER> and </ANSWER>
 
   {{problem}}

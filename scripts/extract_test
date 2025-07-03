@@ -1,0 +1,135 @@
+#!/usr/bin/env python
+
+import os
+import argparse
+import sqlite3
+import numpy as np
+import re
+import pandas as pd
+import evaluate
+from datasets import Dataset
+from pprint import pprint
+from itertools import product
+from tabulate import tabulate
+from tqdm import tqdm
+from difflib import ndiff
+from collections import Counter
+
+from llm_eval import cfg_reader
+from llm_eval.response_collector.infill import extract_answers
+from llm_eval.utils import files
+
+from IPython.terminal.embed import InteractiveShellEmbed
+
+def main(args):
+    pth = args.db_path
+    con = sqlite3.connect(pth)
+    cur = con.cursor()
+
+    cfg, keywords = cfg_reader.load(args.cfg)
+
+    ref_data = Dataset.from_pandas(pd.read_excel(args.ref_path))
+    ref_data = ref_data.filter(
+        lambda x: (
+            x['extraction'] 
+            or x['extraction process'] 
+            or x['extraction notes']
+        )
+    )
+    counts = Counter(ref_data['model'])
+    # ds = make_ds(res, keys=keys)
+    patterns = cfg.infill['ans_extract_patterns']
+    key_tokens = cfg.infill['key_tokens']
+    rm_up_to = cfg.infill['rm_up_to']
+    met = evaluate.load('rouge')
+
+    preds, refs, methods, scores = [], [], [], []
+    for sample in tqdm(ref_data, desc='extracting data'):
+        sample['response'] = sample.get('response', '')
+        extr = extract_answers(
+            sample, 
+            patterns=patterns,
+            key_tokens=key_tokens,
+            rm_up_to=rm_up_to,
+            debug=False,
+        )
+        sample_preds = list(extr.values())
+        sample_methods = list(extr.keys())
+        ref = sample['extraction'] or ''
+        preds.append(sample_preds)
+        methods.append(sample_methods)
+        refs.append(ref)
+    
+        if ref != '' and len(sample_preds) > 0:
+            try:
+                results = met.compute(
+                    predictions=sample_preds,
+                    references=[ref]*len(sample_preds),
+                    rouge_types=['rouge1'],
+                    use_aggregator=False,
+                )
+            except:
+                breakpoint()
+            scores.append(results['rouge1'])
+        elif len(sample_preds) > 0:
+            scores.append([0]*len(sample_preds))
+        else:
+            scores.append([1])
+            
+    bests = np.array([max(score) if len(score) != 0 else 0 for score in scores])
+
+    print('***************************')
+    print(f"num samples: {len(bests)}")
+    print(f"avg r1: {np.mean(bests):.04f}")
+    for t in [.6, .7, .8, .9]:
+        print(f"r1 > {t}: {np.sum(bests > t)/len(bests):.04f}") 
+    print(f"r1 == 1: {np.sum(bests == 1)/len(bests)*100:.04f}%")
+    print(f"zeros: {np.sum(bests == 0)} or {np.sum(bests == 0)/len(bests)*100:.04f}%")
+    print('***************************')
+
+    check, = np.where(bests < .5)
+    ipshell = InteractiveShellEmbed()
+    ipshell()
+
+def make_all_data_ds(cursor):
+    keys = [
+        'resp_id', 'model', 'temperature', 'template_name', 
+        'problem_id', 'template_id', 'sys_id', 'problem', 'answer', 
+        'prompt_text', 'response', 
+    ]
+    ds = make_ds(cursor.execute(f'select * from all_data'), keys)
+    return ds
+
+def cursor_generator(cursor, keys):
+    for row in cursor:
+        yield dict(zip(keys, row))
+        
+def make_ds(cursor, keys):
+    return Dataset.from_dict(dict(zip(keys, zip(*cursor.fetchall()))))
+
+def cur_gen(cur, batch_size=1000, keys=None):
+    while True:
+        batch = cur.fetchmany(batch_size)
+        if not batch:  # No more rows to fetch
+            break
+        if keys:
+            yield dict(zip(keys, zip(*batch)))
+        else:
+            yield batch
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--db_path', '-d', type=str,
+        default=f'{files.project_root()}/data/results/infill/re_final_set/data.db',
+    )
+    parser.add_argument(
+        '--cfg', '-c', type=str,
+        default=f'{files.project_root()}/cfg/config.yaml',
+    )
+    parser.add_argument(
+        '--ref_path', '-r', type=str,
+        default=f'{files.project_root()}/data/annotation/extraction/extraction_ratings.xlsx',
+    )
+    args = parser.parse_args()
+    main(args)

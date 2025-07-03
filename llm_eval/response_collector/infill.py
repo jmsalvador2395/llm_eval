@@ -663,12 +663,65 @@ def infill_solve(args, cfg, keywords):
         )
         con.commit()
 
-def extract_answers(sample: dict, patterns=[], return_diffs=False):
+def extract_answers(
+        sample: dict, 
+        patterns=[], 
+        key_tokens=[],
+        rm_up_to=[],
+        blank_str='______',
+        debug=False,
+    ):
+    response = sample['response']
     extr = dict()
-    extr['full'] = sample['response']
+
+    # convert to list if patterns is just a string
+    if isinstance(patterns, str):
+        patterns = [patterns]
+    tags, texts = [], []
+
+    # remove_up_to
+    def remove_up_to(s, substring):
+        before, sep, after = s.partition(substring)
+        return after if sep else ""
+
+    matched = False
+    for m_key in rm_up_to:
+        if sample['model'].startswith(m_key):
+            pat = rm_up_to[m_key]
+            response = remove_up_to(response, pat)
+            texts.append(response)
+            tags.append(f'rm_up_to_{pat}')
+            matched = True
+            break
+    if not matched:
+        pat = rm_up_to['default']
+        response = remove_up_to(response, pat)
+        texts.append(response)
+        tags.append(f'rm_up_to_{pat}')
+
+    tags, texts = ['full'], [response]
+
+    # extract using search patterns
+    match_keys = []
+    match_vals = []
+    for i, pattern in enumerate(patterns):
+        pattern = pattern.strip()
+        matches = re.findall(pattern, response)
+        match_keys += [
+            f'pattern:{i},pos:{k}' for k in range(len(matches))
+        ]
+        match_vals += matches
+
+    if debug:
+        print(f"match keys: {match_keys}")
+        print(f"match vals: {match_vals}")
+
+    tags += match_keys
+    texts += match_vals
+
     diffs = list(ndiff(
         sample['problem'].split(), 
-        sample['response'].split()
+        response.split()
     ))
 
     # A = problem text, B = response text
@@ -678,12 +731,14 @@ def extract_answers(sample: dict, patterns=[], return_diffs=False):
         if re.match('^\+\s|^\s\s', word)
     ]
     B_only = [word[2:] for word in diffs if word.startswith('+ ')]
-    extr['all_exclusive'] = ' '.join(B_only)
+
+    tags.append('diff_seqs:all')
+    texts.append(' '.join(B_only))
 
     # find uninterupted exclusive sub-sequences in text
     seqs = []
     candidate = ''
-    for word in sample['response'].split():
+    for word in response.split():
         if word in B_only:
             candidate += f' {word}'
         elif candidate != '':
@@ -692,29 +747,83 @@ def extract_answers(sample: dict, patterns=[], return_diffs=False):
     if candidate != '':
         seqs.append(candidate.strip())
     seqs = list(filter(lambda x: len(x.split()) > 3, seqs))
-    extr.update({f'diff_seqs:{i}': seq for i, seq in enumerate(seqs)})
-    lines = sample['response'].split('\n')
+
+    tags += [f'diff_seqs:{i}' for i in range(len(seqs))]
+    texts += seqs
+    lines = response.split('\n')
     lines = [line for line in lines if line != '']
     if len(lines) > 1:
-        extr.update({f'lines:{i}': seq for i, seq in enumerate(lines)})
+        tags += [f'lines:{i}' for i in range(len(lines))]
+        texts += lines
 
-    # convert to list if patterns is just a string
-    if isinstance(patterns, str):
-        patterns = [patterns]
-
-    # extract using search patterns
-    for i, pattern in enumerate(patterns):
-        matches = re.findall(pattern, sample['response'])
-        extr.update({
-            f'pattern:{i},pos:{k}': match 
-            for k, match in enumerate(matches)
-        })
+    # Matches numbered lists (e.g., "1. Item", "2) Item", "(3) Item")
+    numbered_list_pattern = r'(?m)^\s*(?:\d+[\).]|\(\d+\))\s+(.+)$'
     
-    # filter out empty strings
-    extr = {k: v for k, v in extr.items() if v != ""}
+    # Matches bullet points (e.g., "- Item", "* Item", "• Item")
+    bullet_list_pattern = r'(?m)^\s*[-•*]\s+(.+)$'
+    
+    matches = (
+        re.findall(numbered_list_pattern, response) 
+        + re.findall(bullet_list_pattern, response)
+    )
+    list_elements = [item.strip() for item in matches]
+    tags += [f'list_el:{i}' for i in range(len(list_elements))]
+    texts += list_elements
 
-    if return_diffs:
-        return extr, diffs
+    matches = re.findall(r':\s*(.+)', response)
+    tags += [f'post_colon:{i}' for i in range(len(matches))]
+    texts += [match.strip() for match in matches]
+
+    # Use left context of problem and right context of problem to match
+    # the blank
+    left_half, right_half = sample['problem'].split('______')
+    matches = re.findall(
+        f'{re.escape(left_half)}(.*?){re.escape(right_half)}', 
+        response
+    )
+    tags += [f'context_match:{i}' for i in range(len(matches))]
+    texts += [match.strip() for match in matches]
+    
+    # remove tokens
+    def remove_key_tokens(s, tokens):
+        for token in tokens:
+            s = s.replace(token, '')
+        return s.strip()
+    texts.append(remove_key_tokens(response, key_tokens))
+    tags.append(f'rm_key_tokens')
+
+    ##############################
+    # filter and reduction step #
+    ##############################
+
+    # instantiate text_set with strings we already know to filter out
+    invalid_set = {
+        '', blank_str,
+        left_half.strip() + ' ' + right_half.strip(),
+        right_half.strip(), left_half.strip(),
+    }
+    if debug:
+        print(f"left half: {left_half.strip()}")
+        print(f"right half: {right_half.strip()}")
+        print(f"invalid set: {invalid_set}")
+
+    # combine tags that have matching text
+    text_tag_map = {
+        text: [] for text in texts if text not in invalid_set
+    }
+    if debug:
+        print(f"text_tag_map: {text_tag_map}")
+    for tag, text in zip(tags, texts):
+        if text not in invalid_set:
+            text_tag_map[text].append(tag)
+    extr = {
+        ','.join(tag_set): text 
+        for text, tag_set 
+        in text_tag_map.items()
+    }
+
+    if debug:
+        return extr, diffs, texts, tags
     else:
         return extr
 
@@ -768,7 +877,7 @@ def infill_extract(args, cfg, keywords):
         )
     res = stream_cur.execute(
         f"""
-        SELECT R.rowid, R.response, F.problem
+        SELECT R.rowid, R.response, F.problem, R.model
         FROM responses R, prompts P, fitb_problems F
         WHERE
             R.prompt_id=P.rowid
@@ -778,13 +887,16 @@ def infill_extract(args, cfg, keywords):
     data_stream = db_funcs.cur_gen(
         res, 
         batch_size=batch_size, 
-        keys=['rowid', 'response', 'problem'],
+        keys=['rowid', 'response', 'problem', 'model'],
         list_of_dicts=True,
     )
     extract_answers_partial = partial(
         extract_answers, 
         patterns=match_patterns,
-        return_diffs=False
+        key_tokens = cfg.infill['key_tokens'],
+        rm_up_to = cfg.infill['rm_up_to'],
+        blank_str='______',
+        debug=False,
     )
     for n, batch in tqdm(
         enumerate(data_stream), total=N_batch,
@@ -793,8 +905,22 @@ def infill_extract(args, cfg, keywords):
         if n < checkpoint:
             continue
 
-        with ProcessPoolExecutor(max_workers=num_proc) as executor:
-            extr = list(executor.map(extract_answers_partial, batch))
+        if num_proc == 1:
+            extr = [
+                extract_answers(
+                    sample, 
+                    patterns=match_patterns, 
+                    key_tokens = cfg.infill['key_tokens'],
+                    rm_up_to = cfg.infill['rm_up_to'],
+                    blank_str='______',
+                    debug=False,
+                )
+                for sample in batch
+            ]
+        else:
+            with ProcessPoolExecutor(max_workers=num_proc) as executor:
+                extr = list(executor.map(extract_answers_partial, batch))
+
         tags = [key for d in extr for key in d.keys()]
         texts = [value for d in extr for value in d.values()]
         n_vals = [len(sample) for sample in extr]
@@ -803,14 +929,17 @@ def infill_extract(args, cfg, keywords):
             for sample, nval in zip(batch, n_vals)
         ]))
         #tags, texts, = zip(*extr.items())
-        cur.executemany(
-            """
-            INSERT INTO extractions (resp_id, tag, text)
-            VALUES (?, ?, ?)
-            """,
-            zip(rowids, tags, texts)
-        )
-        con.commit()
+
+        # sometimes no answers are extracted
+        if len(tags) != 0:
+            cur.executemany(
+                """
+                INSERT INTO extractions (resp_id, tag, text)
+                VALUES (?, ?, ?)
+                """,
+                zip(rowids, tags, texts)
+            )
+            con.commit()
 
 def infill_evaluate(args, cfg, keywords):
 
