@@ -29,15 +29,19 @@ def main(args):
     con = sqlite3.connect(pth)
     cur = con.cursor()
 
-    supported_metrics = {'rouge', 'bertscore', 'meteor'}
+    supported_metrics = {
+        'rouge', 'bertscore', 'bertscore-context', 
+        'meteor',
+    }
     if args.metric not in supported_metrics:
         raise Exception("not implemented")
 
     trgt_metric = args.metric
-    met = evaluate.load(trgt_metric)
+    
 
     # add additional metrics here
-    if trgt_metric == 'bertscore':
+    if trgt_metric in ['bertscore', 'bertscore-context']:
+        met = evaluate.load('bertscore')
         metric_kwargs = {
             'lang': 'en',
             'rescale_with_baseline': True,
@@ -45,10 +49,12 @@ def main(args):
             'batch_size': 250,
         }
     elif trgt_metric == 'rouge':
+        met = evaluate.load('rouge')
         metric_kwargs = {
             'use_aggregator': False,
         }
     elif trgt_metric == 'meteor':
+        met = evaluate.load('meteor')
         metric_kwargs = dict()
     else:
         raise Exception('not implemented')
@@ -107,6 +113,25 @@ def main(args):
                 met.compute(predictions=[pred], references=[ref])['meteor']
                 for pred, ref, in zip(preds, refs)
             ]
+        elif trgt_metric == 'bertscore-context':
+            left_context, right_context = zip(*[
+                sample['problem'].split('______') 
+                for sample in batch
+            ])
+            full_preds = [
+                f"{lc.strip()} {pred.strip()} {rc.strip()}" 
+                for lc, pred, rc 
+                in zip(left_context, preds, right_context)
+            ]
+            full_refs = [
+                f"{lc.strip()} {ref.strip()} {rc.strip()}" 
+                for lc, ref, rc 
+                in zip(left_context, refs, right_context)
+            ]
+            scores = met.compute(
+                predictions=full_preds, references=full_refs,
+                **metric_kwargs,
+            )['f1']
         else:
             scores = met.compute(
                 predictions=preds, references=refs,
