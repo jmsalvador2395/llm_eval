@@ -30,8 +30,9 @@ def main(args):
     cur = con.cursor()
 
     supported_metrics = {
-        'rouge', 'bertscore', 'bertscore-context', 
-        'meteor',
+        'rouge', 'bertscore', 'meteor', 'chrf',
+        'bertscore-context', 'rouge-context',
+        'chrf-context', 'meteor-context',
     }
     if args.metric not in supported_metrics:
         raise Exception("not implemented")
@@ -48,13 +49,16 @@ def main(args):
             'nthreads': 8,
             'batch_size': 250,
         }
-    elif trgt_metric == 'rouge':
+    elif trgt_metric in ['rouge', 'rouge-context']:
         met = evaluate.load('rouge')
         metric_kwargs = {
             'use_aggregator': False,
         }
-    elif trgt_metric == 'meteor':
+    elif trgt_metric in ['meteor', 'meteor-context']:
         met = evaluate.load('meteor')
+        metric_kwargs = dict()
+    elif trgt_metric in ['chrf', 'chrf-context']:
+        met = evaluate.load('chrf')
         metric_kwargs = dict()
     else:
         raise Exception('not implemented')
@@ -108,30 +112,44 @@ def main(args):
         ids = [x['rowid'] for x in batch]
         refs = [x['answer'] for x in batch]
         preds = [x['pred'] for x in batch]
-        if trgt_metric == 'meteor':
+        if trgt_metric in ['meteor', 'chrf']:
+            key = 'score' if 'chrf' in trgt_metric else 'meteor'
             scores = [
-                met.compute(predictions=[pred], references=[ref])['meteor']
+                met.compute(predictions=[pred], references=[ref])[key]
                 for pred, ref, in zip(preds, refs)
             ]
-        elif trgt_metric == 'bertscore-context':
+        elif trgt_metric.endswith('-context'):
             left_context, right_context = zip(*[
                 sample['problem'].split('______') 
                 for sample in batch
             ])
-            full_preds = [
+            preds = [
                 f"{lc.strip()} {pred.strip()} {rc.strip()}" 
                 for lc, pred, rc 
                 in zip(left_context, preds, right_context)
             ]
-            full_refs = [
+            refs = [
                 f"{lc.strip()} {ref.strip()} {rc.strip()}" 
                 for lc, ref, rc 
                 in zip(left_context, refs, right_context)
             ]
-            scores = met.compute(
-                predictions=full_preds, references=full_refs,
-                **metric_kwargs,
-            )['f1']
+            if trgt_metric in ['bertscore-context', 'rouge-context']:
+                scores = met.compute(
+                    predictions=preds, references=refs,
+                    **metric_kwargs,
+                )
+                if trgt_metric == 'bertscore-context':
+                    scores = scores['f1']
+                else:
+                    scores = scores['rouge1']
+            elif trgt_metric in ['chrf-context', 'meteor-context']:
+                key = 'score' if 'chrf' in trgt_metric else 'meteor'
+                scores = [
+                    met.compute(predictions=[pred], references=[ref])[key]
+                    for pred, ref, in zip(preds, refs)
+                ]
+            else:
+                raise Exception(f'invalid metric: {trgt_metric}')
         else:
             scores = met.compute(
                 predictions=preds, references=refs,
@@ -141,6 +159,8 @@ def main(args):
                 scores = scores['f1']
             elif trgt_metric == 'rouge':
                 scores = scores['rouge1']
+            else:
+                raise Exception(f'invalid metric: {trgt_metric}')
         
         cur.executemany(
             f"""
@@ -151,8 +171,8 @@ def main(args):
         )
         con.commit()
 
-    ipshell = InteractiveShellEmbed()
-    ipshell()
+    # ipshell = InteractiveShellEmbed()
+    # ipshell()
 
 def make_all_data_ds(cursor):
     keys = [

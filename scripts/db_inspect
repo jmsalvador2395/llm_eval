@@ -11,6 +11,9 @@ from transformers import AutoTokenizer
 from pprint import pprint
 from IPython.terminal.embed import InteractiveShellEmbed
 
+from llm_eval.utils import files
+from llm_eval.response_collector import db_funcs
+
 def main(args):
     pth = args.path
     con = sqlite3.connect(pth)
@@ -205,6 +208,9 @@ def drop_metrics(cur):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('path', type=str)
+    parser.add_argument(
+        '--path', '-p', type=str,
+        default=f'{files.project_root()}/data/results/infill/re_final_set/data.db',
+    )
     args = parser.parse_args()
     main(args)
