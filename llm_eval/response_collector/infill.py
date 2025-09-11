@@ -300,81 +300,113 @@ def infill_setup(args, cfg, keywords):
         # skip building source_data table if there's no difference
         else:
             display.done('Data already exists')
-            return 
 
+    # create source_data table if it doesn't exist
     display.info('creating table `source_data`')
     cur = con.cursor()
-    res = cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS source_data (
-            dataset TEXT,
-            ref_id BIGINT,
-            text TEXT,
-            PRIMARY KEY (dataset, ref_id)
+    src_data_exists, = cur.execute(
+        f"""
+        SELECT EXISTS(
+            SELECT 1 FROM sqlite_master 
+            WHERE type="table" AND name="source_data"
         );
         """
-    )
-    display.ok('')
-
-    # load in datasets
-    #ds_names = cfg.infill['target_data']
-    ds_info = cfg.datasets
-    tok_names = cfg.infill.get(
-        'limit_tokenizers', 
-        ['meta-llama/Llama-3.2-1B-Instruct']
-    )
-    for name in tqdm(ds_names, desc='populating source document table'):
-        text = load_data(
-            name, cfg, ds_info[name], args.limit, tok_names
+    ).fetchone()
+    if not src_data_exists:
+        display.in_progress('building source_data table')
+        res = cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS source_data (
+                dataset TEXT,
+                ref_id BIGINT,
+                text TEXT,
+                PRIMARY KEY (dataset, ref_id)
+            );
+            """
         )
-        N = len(text)
-        cur.executemany(
-            "INSERT OR IGNORE INTO source_data VALUES(?, ?, ?)",
-            zip([name]*N, range(N), text)
-        )
-        con.commit()
+        display.ok('')
 
-    text_data = cur.execute(
-        'SELECT dataset, ref_id, text FROM source_data'
-    ).fetchall()
+        # load in datasets
+        #ds_names = cfg.infill['target_data']
+        ds_info = cfg.datasets
+        tok_names = cfg.infill.get(
+            'limit_tokenizers', 
+            ['meta-llama/Llama-3.2-1B-Instruct']
+        )
+        for name in tqdm(ds_names, desc='populating source document table'):
+            text = load_data(
+                name, cfg, ds_info[name], args.limit, tok_names
+            )
+            N = len(text)
+            cur.executemany(
+                "INSERT OR IGNORE INTO source_data VALUES(?, ?, ?)",
+                zip([name]*N, range(N), text)
+            )
+            con.commit()
+
+        text_data = cur.execute(
+            'SELECT dataset, ref_id, text FROM source_data'
+        ).fetchall()
 
     # create fitb_problems table
-    res = cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS fitb_problems (
-            dataset TEXT,
-            ref_id BIGINT,
-            problem TEXT,
-            answer TEXT,
-            unit TEXT,
-            n INT,
-            unit_idx INT,
-            PRIMARY KEY (ref_id, unit, n, unit_idx)
-            FOREIGN KEY (ref_id) REFERENCES source_data
+    problems_exists, = cur.execute(
+        f"""
+        SELECT EXISTS(
+            SELECT 1 FROM sqlite_master 
+            WHERE type="table" AND name="fitb_problems"
         );
         """
-    )
-    
-    cur.close()
-    con.close()
+    ).fetchone()
+    if not problems_exists:
+        display.in_progress('building problems table')
+        res = cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS fitb_problems (
+                dataset TEXT,
+                ref_id BIGINT,
+                problem TEXT,
+                answer TEXT,
+                unit TEXT,
+                n INT,
+                unit_idx INT,
+                PRIMARY KEY (ref_id, unit, n, unit_idx)
+                FOREIGN KEY (ref_id) REFERENCES source_data
+            );
+            """
+        )
+        
+        cur.close()
+        con.close()
 
-    # populate fitb_problems table
-    N = len(text_data)
-    fn_kwargs = {
-        'db_file': db_file,
-        'max_words': cfg.infill['max_blank_words'],
-        'max_sents': cfg.infill['max_blank_sents'],
-        'one_of_each': cfg.infill['one_of_each'],
-        'cfg': cfg,
-    }
+        # populate fitb_problems table
+        N = len(text_data)
+        fn_kwargs = {
+            'db_file': db_file,
+            'max_words': cfg.infill['max_blank_words'],
+            'max_sents': cfg.infill['max_blank_sents'],
+            'one_of_each': cfg.infill['one_of_each'],
+            'cfg': cfg,
+        }
 
-    for el in tqdm(text_data, desc='creating fitb problems'):
-        create_problems(*el, **fn_kwargs)
+        for el in tqdm(text_data, desc='creating fitb problems'):
+            create_problems(*el, **fn_kwargs)
 
-    keys = ['dataset', 'ref_id', 'problem', 'answer',
-            'unit', 'n', 'unit_idx']
-    gen = PromptGenerator(cfg, 'infill')
-    gen.prepare_infill_data(keys, db_path=db_file)
+    # create prompts table
+    prompts_exists, = cur.execute(
+        f"""
+        SELECT EXISTS(
+            SELECT 1 FROM sqlite_master 
+            WHERE type="table" AND name="prompts"
+        );
+        """
+    ).fetchone()
+    if not prompts_exists:
+        display.in_progress('building prompts table')
+        keys = ['dataset', 'ref_id', 'problem', 'answer',
+                'unit', 'n', 'unit_idx']
+        gen = PromptGenerator(cfg, 'infill')
+        gen.prepare_infill_data(keys, db_path=db_file)
+
     display.done(f'database file saved to: {db_file}')
 
 def count_picked_templates(cur, picked_templates, batch_size):

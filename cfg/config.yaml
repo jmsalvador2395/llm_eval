@@ -81,11 +81,12 @@ infill:
     # fitb_l3: "{{project_root}}/cfg/prompts/fitb_l3.yaml" 
     # fitb_l4: "{{project_root}}/cfg/prompts/fitb_l4.yaml" 
     sys: "{{project_root}}/cfg/prompts/fitb_format/fitb_system.yaml"
-    fitb_l0: "{{project_root}}/cfg/prompts/fitb_format/fitb_l0.yaml" 
-    fitb_l1: "{{project_root}}/cfg/prompts/fitb_format/fitb_l1.yaml" 
-    fitb_l2: "{{project_root}}/cfg/prompts/fitb_format/fitb_l2.yaml" 
-    fitb_l3: "{{project_root}}/cfg/prompts/fitb_format/fitb_l3.yaml" 
-    fitb_l4: "{{project_root}}/cfg/prompts/fitb_format/fitb_l4.yaml" 
+    # fitb_l0: "{{project_root}}/cfg/prompts/fitb_format/fitb_l0.yaml" 
+    # fitb_l1: "{{project_root}}/cfg/prompts/fitb_format/fitb_l1.yaml" 
+    # fitb_l2: "{{project_root}}/cfg/prompts/fitb_format/fitb_l2.yaml" 
+    # fitb_l3: "{{project_root}}/cfg/prompts/fitb_format/fitb_l3.yaml" 
+    # fitb_l4: "{{project_root}}/cfg/prompts/fitb_format/fitb_l4.yaml" 
+    paradigms: "{{project_root}}/cfg/prompts/fitb_format/paradigms.yaml" 
   limit_tokenizers: 
     - meta-llama/Llama-3.2-1B-Instruct
     - google/gemma-2-2b-it
